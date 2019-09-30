@@ -1333,6 +1333,34 @@ proof(unfold trans_sim_on1_def,(rule allI)+,(rule impI)+)
   qed
 qed  
 
+lemma ruleSimCond:
+  assumes a1:"\<forall>s. (\<forall> f. f \<in>F \<longrightarrow> formEval f s ) \<longrightarrow> formEval (pre r1) s \<longrightarrow>formEval (pre r2) s" and
+  a2:" \<forall>s f. f \<in>F \<longrightarrow> ((formEval  (substFormByStatement f (act r1)) s) = (formEval (substFormByStatement f (act r2))) s)"
+shows "trans_sim_on1 r1 r2 F"
+proof(unfold trans_sim_on1_def,(rule allI)+,(rule impI)+)
+  fix s1 s2
+  assume b1:"formEval (pre r1) s1 \<and> (\<forall> f. f \<in>F \<longrightarrow> formEval f s1 )" and b2:"state_sim_on1 s1 s2 F"
+  show "((state_sim_on1 (trans (act r1) s1) (trans (act r2) s2) F \<and> (formEval (pre r2) s2 ))
+           \<or> state_sim_on1 (trans (act r1) s1) s2 F)"
+  proof(rule disjI1,rule conjI)
+    show "state_sim_on1 (trans (act r1) s1) (trans (act r2) s2) F"
+    proof(unfold state_sim_on1_def,rule allI,rule impI)
+      fix f
+      assume c1:"f \<in>F"
+      have c2:"formEval  (substFormByStatement f (act r1)) s1 = formEval f (trans (act r1) s1)"
+        using preCondOnExp by auto
+     have c3:"formEval  (substFormByStatement f (act r2)) s2 = formEval f (trans (act r2) s2)"
+       using preCondOnExp by auto  
+     have c4:"formEval  (substFormByStatement f (act r1)) s1=formEval  (substFormByStatement f (act r1)) s2 " sorry
+     have c5:"formEval  (substFormByStatement f (act r1)) s1=formEval  (substFormByStatement f (act r2)) s1" 
+       by(cut_tac b1 c1 a2,auto)
+     show  "formEval f (trans (act r1) s1) =formEval f  (trans (act r2) s2)"
+       using a2 c1 c2 c3 c4 by blast
+   qed
+ next
+    show "formEval (pre r2) s2" sorry
+  qed
+
 lemma example1:
   show "
 end
