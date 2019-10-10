@@ -471,18 +471,18 @@ text{*Variables of a variable, an expression, a formula, and a statement is defi
 varsOfVar, varOfExp, varOfForm and varOfSent respectively*}
 
 definition varsOfVar::" varType \<Rightarrow> varType set"  where  [simp]:
-" varsOfVar x  = {x}" 
+" varsOfVar x  = set [x]" 
 
 primrec varOfExp::"expType \<Rightarrow> varType set"  and
   varOfForm::"formula \<Rightarrow> varType set"  where 
 
 "varOfExp  (IVar v) =   varsOfVar v" |
-"varOfExp   (Const j) =  {}" |
+"varOfExp   (Const j) =  set []" |
 
-"varOfExp   (iteForm f e1 e2) =(varOfForm f) \<union>  (varOfExp   e1 )  \<union>   (varOfExp  e2)" |
+"varOfExp   (iteForm f e1 e2) = ((varOfForm f) \<union>  (varOfExp   e1 )  \<union>   (varOfExp  e2))" |
 
-"varOfForm   (eqn e1 e2) = ( (varOfExp   e1 )  \<union>   (varOfExp  e2))" |
-"varOfForm   ( andForm f1 f2) =(  (varOfForm  f1 )  \<union>  (varOfForm  f2 ))"|
+"varOfForm   (eqn e1 e2) =  ( (varOfExp   e1 )  \<union>  (varOfExp  e2))" |
+"varOfForm   ( andForm f1 f2) =  (  (varOfForm  f1 )   \<union> (varOfForm  f2 ))"|
 "varOfForm   (neg f1 ) = (  (varOfForm   f1 ))"|
 "varOfForm   (orForm f1 f2) =(  (varOfForm   f1 )   \<union>   (varOfForm  f2 ))"|
 "varOfForm   (implyForm f1 f2) = (  (varOfForm  f1 )  \<union>  (varOfForm f2 ))"|
@@ -491,6 +491,10 @@ primrec varOfExp::"expType \<Rightarrow> varType set"  and
 primrec  varOfSent::"statement \<Rightarrow> varType set" where
 " varOfSent  (assign a)=( varsOfVar  (fst a)) "|
 " varOfSent  ( parallel a sent2)= (( varsOfVar  (fst a)) \<union>  (varOfSent  sent2))"
+
+primrec varOfFormList::"formula list \<Rightarrow> varType set" where
+"varOfFormList [] = {}" |
+"varOfFormList (f#fs) =(varOfForm  f) \<union> (varOfFormList fs)"
 
 lemma varsOfSent1:
   " (varOfSent S) = set (map fst (statement2Assigns S))"
@@ -1164,36 +1168,269 @@ definition
 
   definition
   state_sim_on1 ::"state\<Rightarrow>state\<Rightarrow>formula set\<Rightarrow>bool" where [simp]:
-  " state_sim_on1 s s' F ==
-  (\<forall>f. f \<in>F \<longrightarrow> (formEval f s = formEval f s')) "
+  " state_sim_on1 s s' F ==(\<forall>f v. f \<in>F \<longrightarrow> v \<in>varOfForm f\<longrightarrow>s(v) = s'(v))" 
+ (* (\<forall>f. f \<in>F \<longrightarrow> (formEval f s = formEval f s')) "*)
+
 
 
 definition 
-  pred_sim_on1 :: "formula\<Rightarrow>formula\<Rightarrow>formula set\<Rightarrow>bool" where [simp]:
-  "pred_sim_on1 f1 f2 F \<equiv>
-  \<forall> s. formEval f1 s \<longrightarrow> (\<exists>s'. formEval f2 s' \<and>  state_sim_on1 s s' F)"
+  pred_sim_on1 :: "formula\<Rightarrow>formula\<Rightarrow>formula set\<Rightarrow>state\<Rightarrow>bool" where [simp]:
+  "pred_sim_on1 f1 f2 F s\<equiv>
+   formEval f1 s \<longrightarrow> (\<exists>s'. formEval f2 s' \<and>  state_sim_on1 s s' F)"
 
 
 definition
-  trans_sim_on1 :: "rule \<Rightarrow> rule \<Rightarrow>formula set\<Rightarrow>bool" where [simp]:
-"trans_sim_on1 r1 r2 F \<equiv>
-  \<forall>s1 s2. ((formEval (pre r1) s1 ) \<and>(\<forall>f. f\<in>F \<longrightarrow> formEval f s1)\<longrightarrow>state_sim_on1 s1 s2 F \<longrightarrow>
+  trans_sim_on1 :: "rule \<Rightarrow> rule \<Rightarrow>formula set\<Rightarrow>state\<Rightarrow>bool" where [simp]:
+"trans_sim_on1 r1 r2 F s1 \<equiv>
+  \<forall> s2. ((formEval (pre r1) s1 ) \<and>(\<forall>f. f\<in>F \<longrightarrow> formEval f s1)\<longrightarrow>state_sim_on1 s1 s2 F \<longrightarrow>
            ((state_sim_on1 (trans (act r1) s1) (trans (act r2) s2) F \<and> (formEval (pre r2) s2 ))
            \<or> state_sim_on1 (trans (act r1) s1) s2 F))" 
 
 definition
-  prot_sim_on1 ::"formula set \<Rightarrow> formula set \<Rightarrow> rule set \<Rightarrow> rule set \<Rightarrow> formula set\<Rightarrow>bool" where [simp]:
-"prot_sim_on1 I I' rs rs' F \<equiv>
-  (\<forall>f. f \<in> I \<longrightarrow> (\<exists>f'. f' \<in> I' \<and> pred_sim_on1 f f' F)) \<and>
-  (\<forall>r. r \<in> rs\<longrightarrow>(\<exists> r'. r' \<in> rs' \<and> trans_sim_on1 r r' F))"
+  prot_sim_on1 ::"formula set \<Rightarrow> formula set \<Rightarrow> rule set \<Rightarrow> rule set \<Rightarrow> formula set\<Rightarrow>state\<Rightarrow>bool" where [simp]:
+"prot_sim_on1 I I' rs rs' F s\<equiv>
+  (\<forall>f. f \<in> I \<longrightarrow> (\<exists>f'. f' \<in> I' \<and> pred_sim_on1 f f' F s)) \<and>
+  (\<forall>r. r \<in> rs\<longrightarrow>(\<exists> r'. r' \<in> rs' \<and> trans_sim_on1 r r' F s))"
 
 primrec varOfForms:: "formula list \<Rightarrow> varType set" where 
 "varOfForms [] = {}" |
 "varOfForms (f#fs) = (varOfForm f) \<union> (varOfForms fs)"
 
+ (*shows " (  (varOfExp e \<inter>  (varOfSent S) ={}) \<longrightarrow>(substExpByStatement e S)  =e) \<and>
+           (  (varOfForm f \<inter>  (varOfSent S) ={} )\<longrightarrow> (substFormByStatement f S)  =  f )"*)
+
+lemma agreeOnVars:
+  shows "((\<forall>v. v \<in> (varOfExp e) \<longrightarrow>s1(v) = s2(v)) \<longrightarrow>(expEval e s1=expEval e s2))\<and>((\<forall>v. v \<in> (varOfForm f) \<longrightarrow>s1(v) = s2(v))\<longrightarrow>  (formEval f s1 =formEval f s2))
+" (is "(( ?condOne e \<longrightarrow> ?LHS e =?RHS e )\<and> (?condOnf f \<longrightarrow> ?LHS1 f =?RHS1 f ))")
+proof(induct_tac e and f)
+  fix x
+  let ?e="IVar x"
+  show "( ?condOne ?e \<longrightarrow> ?LHS ?e = ?RHS ?e)"
+    by simp
+next
+  fix x
+  let ?e="Const x"
+  show "( ?condOne ?e \<longrightarrow> ?LHS ?e = ?RHS ?e)"
+    by simp
+next
+  fix f1 e1 e2 
+  let ?e="iteForm f1 e1 e2 "
+  assume a1:" ?condOne e1 \<longrightarrow> ?LHS e1 =?RHS e1" and
+  a2:"?condOne e2 \<longrightarrow> ?LHS e2 =?RHS e2" and
+  a3:"?condOnf f1 \<longrightarrow> ?LHS1 f1 =?RHS1 f1 " 
+  show "( ?condOne ?e \<longrightarrow> ?LHS ?e = ?RHS ?e)"
+  proof 
+    assume b1:"?condOne ?e"
+    have b2:"?condOne e1" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfExp e1) " 
+      have c2:"v  \<in> (varOfExp ?e)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3:"?LHS e1 =?RHS e1"
+      using local.a1 by blast
+   have b2':"?condOne e2" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfExp e2) " 
+      have c2:"v  \<in> (varOfExp ?e)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3':"?LHS e2 =?RHS e2" 
+      using local.a2 by blast
+   have b2'':"?condOnf f1" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfForm f1) " 
+      have c2:"v  \<in> (varOfExp ?e)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3'':"?LHS1 f1 =?RHS1 f1"
+      using local.a3 by blast 
+    show "?LHS ?e = ?RHS ?e"
+      by (simp add: b3 b3' b3'')
+  qed
+next
+  fix e1 e2
+   let ?f="eqn e1 e2 "
+  assume a1:" ?condOne e1 \<longrightarrow> ?LHS e1 =?RHS e1" and
+  a2:"?condOne e2 \<longrightarrow> ?LHS e2 =?RHS e2"  
+  show "( ?condOnf ?f \<longrightarrow> ?LHS1 ?f = ?RHS1 ?f)"
+  proof 
+    assume b1:"?condOnf ?f"
+    have b2:"?condOne e1" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfExp e1) " 
+      have c2:"v  \<in> (varOfForm ?f)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3:"?LHS e1 =?RHS e1"
+      using local.a1 by blast
+   have b2':"?condOne e2" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfExp e2) " 
+      have c2:"v  \<in> (varOfForm ?f)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3':"?LHS e2 =?RHS e2" 
+      using local.a2 by blast
+    show " ?LHS1 ?f = ?RHS1 ?f"
+      by (simp add: b3 b3')  
+  qed
+next
+  fix f1 f2
+   let ?f="andForm f1 f2 "
+  assume a1:" ?condOnf f1 \<longrightarrow> ?LHS1 f1 =?RHS1 f1" and
+  a2:"?condOnf f2 \<longrightarrow> ?LHS1 f2 =?RHS1 f2"  
+  show "( ?condOnf ?f \<longrightarrow> ?LHS1 ?f = ?RHS1 ?f)"
+  proof 
+    assume b1:"?condOnf ?f"
+    have b2:"?condOnf f1" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfForm f1) " 
+      have c2:"v  \<in> (varOfForm ?f)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3:"?LHS1 f1 =?RHS1 f1"
+      using local.a1 by blast
+   have b2':"?condOnf f2" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfForm f2) " 
+      have c2:"v  \<in> (varOfForm ?f)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3':"?LHS1 f2 =?RHS1 f2" 
+      using local.a2 by blast
+    show " ?LHS1 ?f = ?RHS1 ?f"
+      by (simp add: b3 b3')  
+  qed
+next
+  fix f1 
+   let ?f="neg f1  "
+  assume a1:" ?condOnf f1 \<longrightarrow> ?LHS1 f1 =?RHS1 f1" 
+  show "( ?condOnf ?f \<longrightarrow> ?LHS1 ?f = ?RHS1 ?f)"
+  proof 
+    assume b1:"?condOnf ?f"
+    have b2:"?condOnf f1" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfForm f1) " 
+      have c2:"v  \<in> (varOfForm ?f)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3:"?LHS1 f1 =?RHS1 f1"
+      using local.a1 by blast
+   
+    show " ?LHS1 ?f = ?RHS1 ?f"
+      by (simp add: b3 )  
+  qed
+next
+  fix f1 f2
+   let ?f="orForm f1 f2 "
+  assume a1:" ?condOnf f1 \<longrightarrow> ?LHS1 f1 =?RHS1 f1" and
+  a2:"?condOnf f2 \<longrightarrow> ?LHS1 f2 =?RHS1 f2"  
+  show "( ?condOnf ?f \<longrightarrow> ?LHS1 ?f = ?RHS1 ?f)"
+  proof 
+    assume b1:"?condOnf ?f"
+    have b2:"?condOnf f1" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfForm f1) " 
+      have c2:"v  \<in> (varOfForm ?f)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3:"?LHS1 f1 =?RHS1 f1"
+      using local.a1 by blast
+   have b2':"?condOnf f2" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfForm f2) " 
+      have c2:"v  \<in> (varOfForm ?f)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3':"?LHS1 f2 =?RHS1 f2" 
+      using local.a2 by blast
+    show " ?LHS1 ?f = ?RHS1 ?f"
+      by (simp add: b3 b3')  
+  qed
+next
+  fix f1 f2
+   let ?f="implyForm f1 f2 "
+  assume a1:" ?condOnf f1 \<longrightarrow> ?LHS1 f1 =?RHS1 f1" and
+  a2:"?condOnf f2 \<longrightarrow> ?LHS1 f2 =?RHS1 f2"  
+  show "( ?condOnf ?f \<longrightarrow> ?LHS1 ?f = ?RHS1 ?f)"
+  proof 
+    assume b1:"?condOnf ?f"
+    have b2:"?condOnf f1" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfForm f1) " 
+      have c2:"v  \<in> (varOfForm ?f)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3:"?LHS1 f1 =?RHS1 f1"
+      using local.a1 by blast
+   have b2':"?condOnf f2" 
+    proof(rule allI,rule impI)
+      fix v
+      assume c1:"v \<in> (varOfForm f2) " 
+      have c2:"v  \<in> (varOfForm ?f)"
+        by (simp add: c1)
+      then show "s1(v) = s2(v)"
+        by (simp add: b1) 
+    qed
+    then have b3':"?LHS1 f2 =?RHS1 f2" 
+      using local.a2 by blast
+    show " ?LHS1 ?f = ?RHS1 ?f"
+      by (simp add: b3 b3')  
+  qed
+next
+  let ?f="chaos"
+  show "( ?condOnf ?f \<longrightarrow> ?LHS1 ?f = ?RHS1 ?f)"
+    by auto
+qed
+
+lemma stSim: 
+  assumes  a1:"state_sim_on1 s1 s2 F"
+  shows " (\<forall>f. f \<in>F \<longrightarrow> (formEval f s1 = formEval f s2)) "
+proof(rule allI, rule impI)
+  fix f
+  assume b1:"f \<in> F"
+  show " (formEval f s1 = formEval f s2)"
+    using agreeOnVars assms b1 by auto
+qed  
+  
 lemma sim:
-  assumes a1:"prot_sim_on1 I I' rs rs' F" and a2:"\<forall>s f. s \<in>reachableSet I' rs' \<longrightarrow>f \<in>F \<longrightarrow> formEval f s  "
-  and a3:"\<forall>s. s \<in>reachableSet I rs' \<longrightarrow>f \<in>F \<longrightarrow> formEval f s  " 
+  
+  assumes  a1:"\<forall>s. s \<in>reachableSet I rs \<longrightarrow>prot_sim_on1 I I' rs rs' F s" and a2:"\<forall>s f. s \<in>reachableSet I' rs' \<longrightarrow>f \<in>F \<longrightarrow> formEval f s  "
+  (*and a3:"\<forall>s. s \<in>reachableSet I rs' \<longrightarrow>f \<in>F \<longrightarrow> formEval f s  " *)
   and a4:"s \<in>reachableSet I rs " and a5:"\<forall> s f.  f \<in>I \<longrightarrow> formEval f s \<longrightarrow> (\<forall>f'. f' \<in>F \<longrightarrow> formEval  f' s)   "
   and a6:"\<forall> s f.  f \<in>I' \<longrightarrow> formEval f s \<longrightarrow> (\<forall>f'. f' \<in>F \<longrightarrow> formEval  f' s)   "
 shows "((\<exists>s'. s' \<in>reachableSet I' rs' \<and> state_sim_on1 s s' F  )\<and> (\<forall> f. f \<in>F \<longrightarrow> formEval f s ))" (is "?con1 s \<and> ?con2 s")
@@ -1204,9 +1441,11 @@ proof induct
   show "?con1 s \<and> ?con2 s"
   proof(rule conjI)
     
-    have c1:" (\<forall>f. f \<in> I \<longrightarrow> (\<exists>f'. f' \<in> I' \<and> pred_sim_on1 f f' F))"
-        by(cut_tac b1 b2 a1,simp)
-      have c2:"\<exists>f'. f' \<in> I' \<and> pred_sim_on1 ini f' F"  (is "\<exists>f'. ?P f'")
+    have c0:"s \<in> reachableSet I rs"
+      using b1 b2 reachableSet.initState by auto
+    have c1:" (\<forall>f. f \<in> I \<longrightarrow> (\<exists>f'. f' \<in> I' \<and> pred_sim_on1 f f' F s))"
+      using c0 local.a1 prot_sim_on1_def by blast
+      have c2:"\<exists>f'. f' \<in> I' \<and> pred_sim_on1 ini f' F s"  (is "\<exists>f'. ?P f'")
         by(cut_tac c1 b2  ,auto)
     then obtain ini' where c3:"?P ini'" by blast
     then have "\<exists>s'. formEval ini' s' \<and> state_sim_on1 s s' F"  (is "\<exists>s'. ?P s'")
@@ -1233,8 +1472,8 @@ next
   and b3:"r \<in> rs"  and b4:"formEval (pre r)  s"  
   show "?con1 ?s' \<and> ?con2 ?s'"
   proof -
-    have c1:" (\<exists> r'. r' \<in> rs' \<and> trans_sim_on1 r r' F)" (is "EX r'. ?P r'")
-      by(cut_tac b3 a1,auto)
+    have c1:" (\<exists> r'. r' \<in> rs' \<and> trans_sim_on1 r r' F s)" (is "EX r'. ?P r'")
+      using b2 b3 local.a1 prot_sim_on1_def by blast 
     then obtain r' where c2:"?P r'"  by blast
 
     have c3:"(\<exists>s2 . (s2 \<in> reachableSet I' rs' \<and> state_sim_on1 s s2 F  ))" (is "EX s2. ?P s2")
@@ -1270,7 +1509,8 @@ next
       fix f
       assume d1:"f \<in> F"
       have c9:"formEval f s'" by(cut_tac a2 c7 d1,auto)
-      show "formEval f ?s'" by(cut_tac c9 c7 d1,auto)
+      show "formEval f ?s'"
+        using c7 c9 d1 stSim by blast
     qed
     have "?con1 ?s' \<and> ?con2 ?s'" by(cut_tac c6 c8, auto)
     }
@@ -1291,7 +1531,8 @@ next
         fix f
         assume d1:"f \<in> F"
         have c9:"formEval f s2" by(cut_tac a2 c3 d1,auto)
-        show "formEval f ?s'" by(cut_tac c9 c5 d1,auto)
+        show "formEval f ?s'"
+          using c5 c9 d1 stSim by blast 
       qed
       have "?con1 ?s' \<and> ?con2 ?s'" by(cut_tac c6 c8, auto)  
     }
@@ -1301,7 +1542,7 @@ next
   qed
 qed
 
-lemma ruleSim:
+(*lemma ruleSim:
   assumes a1:"\<forall>s1 s2 f. (\<forall> f. f \<in>F \<longrightarrow> formEval f s1 ) \<longrightarrow> 
     state_sim_on1 s1 s2 F\<longrightarrow> formEval  (pre r1)  s1 \<longrightarrow> formEval (pre r2) s2" and
     a2:"\<forall>s1 s2  f.(f \<in>F \<longrightarrow>(\<forall> f. f \<in>F \<longrightarrow> formEval f s1 )\<longrightarrow>
@@ -1331,9 +1572,9 @@ proof(unfold trans_sim_on1_def,(rule allI)+,(rule impI)+)
     show "formEval (pre r2) s2"
       using b1 b2 local.a1 by blast
   qed
-qed  
+qed  *)
 
-lemma ruleSimCond:
+(*lemma ruleSimCond:
   assumes a1:"\<forall>s. (\<forall> f. f \<in>F \<longrightarrow> formEval f s ) \<longrightarrow> formEval (pre r1) s \<longrightarrow>formEval (pre r2) s" and
   a2:" \<forall>s f. f \<in>F \<longrightarrow> ((formEval  (substFormByStatement f (act r1)) s) = (formEval (substFormByStatement f (act r2))) s)"
 shows "trans_sim_on1 r1 r2 F"
@@ -1351,20 +1592,80 @@ proof(unfold trans_sim_on1_def,(rule allI)+,(rule impI)+)
         using preCondOnExp by auto
      have c3:"formEval  (substFormByStatement f (act r2)) s2 = formEval f (trans (act r2) s2)"
        using preCondOnExp by auto  
-     have c4:"formEval  (substFormByStatement f (act r1)) s1=formEval  (substFormByStatement f (act r1)) s2 " sorry
+     have c4:"formEval  (substFormByStatement f (act r2)) s1=formEval  (substFormByStatement f (act r2)) s2 " sorry
      have c5:"formEval  (substFormByStatement f (act r1)) s1=formEval  (substFormByStatement f (act r2)) s1" 
        by(cut_tac b1 c1 a2,auto)
      show  "formEval f (trans (act r1) s1) =formEval f  (trans (act r2) s2)"
-       using a2 c1 c2 c3 c4 by blast
+       using a2 c1 c2 c3 c4 by blast 
    qed
  next
-    show "formEval (pre r2) s2" sorry
-  qed
+   have "formEval (pre r2) s1"
+     by (simp add: b1 local.a1)
+   then    show "formEval (pre r2) s2" 
+    
+  qed*)
+thm  agreeOnVars
+lemma agreeOnVarsOfExp: assumes a:"\<forall> v.   v \<in> varOfExp e \<longrightarrow> s1(v) = s2 v" 
+  shows "expEval e s1 = expEval e s2"
+  by (simp add: agreeOnVars assms) 
+  
 
-lemma example1:
-  show "
-end
+lemma ruleSimCond:
+  assumes a1:" (\<forall> f. f \<in>F \<longrightarrow> formEval f s ) \<longrightarrow> formEval (pre r1) s \<longrightarrow>formEval (pre r2) s" and
+  (*a2:" \<forall>s f. f \<in>F \<longrightarrow> ((formEval  (substFormByStatement f (act r1)) s) = (formEval (substFormByStatement f (act r2))) s)" and*)
+  a3:"\<forall>v. v\<in>varOfForm (pre r2) \<longrightarrow> (\<exists>f. f \<in>F \<and>v \<in> varOfForm f)" and  
+  a4:"\<forall>f  v. f\<in> F \<longrightarrow>  v \<in> varOfForm f \<longrightarrow> expEval (substExpByStatement (IVar v)  (act r2)) s = expEval (substExpByStatement (IVar v)  (act r1)) s" and
+  a5:"\<forall>f v va. v \<in> varOfForm f \<longrightarrow> f \<in>F \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act r2))\<longrightarrow> (\<exists>f. f \<in> F \<and> va \<in> varOfForm f)" 
+shows "trans_sim_on1 r1 r2 F s"
+proof(unfold trans_sim_on1_def,(rule allI)+,(rule impI)+)
+  fix s1 s2
+  assume b1:"formEval (pre r1) s1 \<and> (\<forall> f. f \<in>F \<longrightarrow> formEval f s1 )" and b2:"state_sim_on1 s1 s2 F"
+  show "((state_sim_on1 (trans (act r1) s1) (trans (act r2) s2) F \<and> (formEval (pre r2) s2 ))
+           \<or> state_sim_on1 (trans (act r1) s1) s2 F)"
+   proof(rule disjI1,rule conjI)
+    show "state_sim_on1 (trans (act r1) s1) (trans (act r2) s2) F"
+    proof(unfold state_sim_on1_def,(rule allI)+,(rule impI)+)
+      fix f v
+      assume c1:"f \<in>F"  and c2:"v \<in>varOfForm f"
+      have c20:"expEval  (substExpByStatement (IVar v) (act r1)) s1 = expEval (IVar v) (trans (act r1) s1)" 
+        using preCondOnExp by blast
+     have c3:"expEval  (substExpByStatement (IVar v) (act r1)) s2 = expEval (IVar v) (trans (act r1) s2)"
+       using preCondOnExp by blast
+
+     have c4:"\<forall>va. va \<in> varOfExp (substExpByStatement  (IVar v)  (act r2)) \<longrightarrow> s1(va) = s2 va"
+       using a5 b2 c1 c2 state_sim_on1_def by blast
+ 
+     have c5:"expEval (substExpByStatement (IVar v)  (act r2)) s1 = expEval (substExpByStatement (IVar v)  (act r2)) s2"
+       using agreeOnVars c4 by blast 
+     show " trans (act r1) s1 v =   trans (act r2) s2 v"
+       using a4 c1 c2 c5 lemmaOnValOf by auto
+   qed
+ next
+   have "formEval (pre r2) s1"
+     by (simp add: b1 local.a1)
+  have c4:"\<forall>va. va \<in> varOfForm  (pre r2)\<longrightarrow> s1(va) = s2 va"
+    using a3 b2 by auto 
+   show "formEval (pre r2) s2"
+     using \<open>formEval (pre r2) s1\<close> agreeOnVars c4 by blast 
+    
+ qed
+qed
+
+
+      
+(*lemma example1:
+  show " (\<exists>f. f \<in> F \<and> va \<in> varOfForm f)
+    proof(rule allI, rule impI)
+       fix va
+       assume d1:"va \<in> varOfExp (substExpByStatement  (IVar v)  (act r2))"
+       show  "(\<exists>f. f \<in> F \<and> va \<in> varOfForm f)"
+         apply(cut_tac d1 a5 c1 c2 ,drule_tac x="f" in spec,drule_tac x="v" in spec,drule_tac x="va" in spec)
+         apply simp
+
+
 have c4:"formEval  (substFormByStatement f (act r1)) s1 = (formEval (substFormByStatement f (act r2))) s1"
         apply(cut_tac  a2, drule_tac x="s1" in spec, drule_tac x="f" in spec,simp,cut_tac b1 c1,simp) done
       have c5:"(\<forall> f. f \<in>F \<longrightarrow> formEval f s2 )" 
         apply(cut_tac b1 b2,auto) done
+*)
+end

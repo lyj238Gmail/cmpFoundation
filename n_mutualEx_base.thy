@@ -70,6 +70,8 @@ definition rules::"nat \<Rightarrow> rule set" where [simp]:
 (\<exists> i. i\<le>N\<and>r=n_Idle  i)
 }"
 
+
+
 definition rules'::" rule set" where [simp]:
 "rules'  \<equiv> (rules 1)  \<union> {n_Crit', n_Idle' 1}"
 
