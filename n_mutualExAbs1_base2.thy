@@ -3,7 +3,7 @@
     Copyright    2016 State Key Lab of Computer Science, Institute of Software, Chinese Academy of Sciences
 *)
  
-theory n_mutualExAbs1_base imports paraTheory
+theory n_mutualExAbs1_base2 imports paraTheory
 begin
 
 section{*Main definitions*}
@@ -151,8 +151,18 @@ definition invariants::"nat \<Rightarrow> formula set" where [simp]:
 (\<exists> p__Inv0. p__Inv0\<le>N\<and>f=inv__9  p__Inv0)
 }"
 
-definition invariantsAbs::" formula list" where [simp]:
-"invariantsAbs  \<equiv> [
+definition invariantsAbs::" formula list" where 
+"invariantsAbs  \<equiv>[
+(inv__1  0 1) ,(inv__1   1 0),
+(inv__2  0),(inv__2  1),
+(inv__3 0),(inv__3 1),
+(inv__4  0 1),(inv__4   1 0),
+(inv__5  0 1),(inv__5   1 0),
+(inv__6  0 1) ,(inv__6   1 0),
+(inv__7  ) ,
+(inv__8  0) ,(inv__8  1),
+(inv__9  0),(inv__9  1)
+]" (*[
 (inv__1  0 1) ,
 (inv__2  0),
 (inv__3 0),
@@ -162,7 +172,7 @@ definition invariantsAbs::" formula list" where [simp]:
 (inv__7  ) ,
 (inv__8  0) ,
 (inv__9  0)
-]"
+]"*)
 
 subsection{*Definitions of initial states*}
 
@@ -214,12 +224,12 @@ axiomatization  where axiomOnf1 [simp,intro]:
   apply(rule_tac x="inv__9 0 " in exI,simp)
   done*)
 
-lemma lemmaOnIdleLeNc:
+lemma lemmaOnTryLeNc:
   assumes a1:"i\<le>NC" 
-  shows "trans_sim_on1 (n_Idle  i) (n_Idle  i) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r ?F s")
+  shows "trans_sim_on1 (n_Try  i) (n_Try  i) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r ?F s")
 proof(rule ruleSimId)
   show  "\<forall>v. v\<in>varOfForm (pre ?r) \<longrightarrow>  v \<in>(varOfFormList invariantsAbs) "
-    by(cut_tac a1, auto) 
+    by(cut_tac a1,  auto simp add :invariantsAbs_def) 
     
 next
   show  b1: "\<forall>v a. a \<in> set (statement2Assigns (act ?r)) \<longrightarrow> v\<in>varOfExp ( substExpByStatement (IVar (fst a))  (act ?r))\<longrightarrow>v \<in>varOfFormList invariantsAbs "
@@ -227,7 +237,7 @@ next
     
 qed
 
-lemma lemmaOnIdleGtNc:
+lemma lemmaOnTryGtNc:
   assumes a1:"i>NC" and a2:"s \<in> reachableSet (set (allInitSpecs N)) (rules N)" and a3:"1<N" and  
   a4:"\<forall>f.  f \<in>(set invariantsAbs) \<longrightarrow>  formEval f s"
   shows "trans_sim_on1 (n_Idle  i) (n_ABS_Idle  NC) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r' ?F s")
@@ -235,73 +245,7 @@ proof(rule ruleSimCond)
   show " formEval (pre ?r) s \<longrightarrow>formEval (pre ?r') s" (is "?A \<longrightarrow>?B")
   proof(rule impI)+
     assume b1:"?A"  
-    from a4  have b4:"formEval (inv__5 0 1 ) s"  by auto
-    have b5:"formEval (inv__5 i 0 ) s" 
-    proof(cut_tac a1 a2 a3 b4,rule axiomOnf2,force+)qed
-    with b1  have b6:"formEval (neg (eqn (IVar (Field (Para (Ident ''n'') 0) ''st'')) (Const E))) s" by auto
-     have b7:"formEval (inv__5 i 1 ) s" 
-     proof(cut_tac a1 a2 a3 b4,rule axiomOnf2,force+)qed
-     with b1 have b7:"formEval (neg (eqn (IVar (Field (Para (Ident ''n'') 1) ''st'')) (Const E))) s" by auto
-
-     from a4 have b8:"formEval (inv__6 0 1 ) s"  by auto
-     have b9:"formEval (inv__6 i 0 ) s" 
-    proof(cut_tac a1 a2 a3 b8,rule axiomOnf2,force+)qed
-    with b1 have b9:"formEval (neg (eqn (IVar (Field (Para (Ident ''n'') 0) ''st'')) (Const C))) s" by auto
-     have b10:"formEval (inv__6 i 1 ) s" 
-     proof(cut_tac a1 a2 a3 b8,rule axiomOnf2,force+)qed
-     with b1 have b11:"formEval (neg (eqn (IVar (Field (Para (Ident ''n'') 1) ''st'')) (Const C))) s" by auto
-    
-     from b1 b6 b7 b9 b11 show "formEval (pre ?r') s" 
-       by auto
-   qed
- next
-    
-   show "\<forall>v. v\<in>varOfForm (pre ?r') \<longrightarrow> v \<in>(varOfFormList invariantsAbs)"
-      by auto
- next
-   
-   show "
-  (\<forall>v.   v \<in> (varOfFormList invariantsAbs) \<longrightarrow>formEval (pre ?r) s\<longrightarrow> expEval (substExpByStatement (IVar v)  (act ?r')) s = expEval (substExpByStatement (IVar v)  (act ?r)) s)"  
-   proof((rule allI)+,(rule impI)+)
-     fix  v
-     assume b1:"v\<in> (varOfFormList invariantsAbs)"  and b2:"formEval (pre ?r) s"
-    
-     from a4 have b30:"formEval (inv__3 0 ) s"   by auto
-
-     have b3:"formEval (inv__3 i ) s"  proof(cut_tac a1 a2 a3 b30,rule axiomOnf1,force+)qed
-
-     show "expEval (substExpByStatement (IVar v)  (act ?r')) s = expEval (substExpByStatement (IVar v)  (act ?r)) s"  
-       apply (cut_tac  a1 b1 b2 b3,auto) done
-   qed
-  (* have "\<forall>f v va. v \<in> varOfForm f \<longrightarrow> f \<in>?F \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act ?r'))\<longrightarrow> va \<in>(varOfFormList invariantsAbs)"   by auto*)
-     then show "\<forall> v va. v \<in> varOfFormList invariantsAbs \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act ?r'))\<longrightarrow> va \<in> varOfFormList invariantsAbs"
-      by auto  
-  qed
-
-
-
-lemma lemmaOnIdleLeNc:
-  assumes a1:"i\<le>NC" 
-  shows "trans_sim_on1 (n_Crit  i) (n_Crit  i) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r ?F s")
-proof(rule ruleSimId)
-  show  "\<forall>v. v\<in>varOfForm (pre ?r) \<longrightarrow>  v \<in>(varOfFormList invariantsAbs) "
-    by(cut_tac a1, auto) 
-    
-next
-  show  b1: "\<forall>v a. a \<in> set (statement2Assigns (act ?r)) \<longrightarrow> v\<in>varOfExp ( substExpByStatement (IVar (fst a))  (act ?r))\<longrightarrow>v \<in>varOfFormList invariantsAbs "
-   proof((rule allI)+,(rule impI)+,auto) qed
-    
-qed
-
-lemma lemmaOnCritGtNc:
-  assumes a1:"i>NC" and a2:"s \<in> reachableSet (set (allInitSpecs N)) (rules N)" and a3:"1<N" and  
-  a4:"\<forall>f.  f \<in>(set invariantsAbs) \<longrightarrow>  formEval f s"
-  shows "trans_sim_on1 (n_Idle  i) (n_ABS_Idle  NC) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r' ?F s")
-proof(rule ruleSimCond)
-  show " formEval (pre ?r) s \<longrightarrow>formEval (pre ?r') s" (is "?A \<longrightarrow>?B")
-  proof(rule impI)+
-    assume b1:"?A"  
-    from a4  have b4:"formEval (inv__5 0 1 ) s"  by auto
+    from a4  have b4:"formEval (inv__5 0 1 ) s"  by  (force simp add :invariantsAbs_def) 
     have b5:"formEval (inv__5 i 0 ) s" 
     proof(cut_tac a1 a2 a3 b4,rule axiomOnf2,force+)qed
     with b1  have b6:"formEval (neg (eqn (IVar (Field (Para (Ident ''n'') 0) ''st'')) (Const E))) s" by auto
