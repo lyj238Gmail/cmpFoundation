@@ -266,9 +266,9 @@ proof(rule ruleSimCond1)
     have b5:"formEval (inv__5 i 0 ) s" 
     proof(cut_tac a1 a2 a3 b4,rule axiomOnf2,force+)qed
     with b1  have b6:"formEval (neg (eqn (IVar (Field (Para (Ident ''n'') 0) ''st'')) (Const E))) s" by auto
-     have b7:"formEval (inv__5 i 1 ) s" 
+    have b7:"formEval (inv__5 i 1 ) s" 
      proof(cut_tac a1 a2 a3 b4,rule axiomOnf2,force+)qed
-     with b1 have b7:"formEval (neg (eqn (IVar (Field (Para (Ident ''n'') 1) ''st'')) (Const E))) s" by auto
+    with b1 have b7:"formEval (neg (eqn (IVar (Field (Para (Ident ''n'') 1) ''st'')) (Const E))) s" by auto
 
       
      from a4 have b8:"formEval (inv__6 0 1 ) s"    by (force simp del:inv__6_def)
@@ -288,26 +288,23 @@ proof(rule ruleSimCond1)
     expEval (substExpByStatement (IVar v)  (act ?r')) s = expEval (substExpByStatement (IVar v)  (act ?r)) s)"
    proof(rule allI,(rule impI)+)
       fix  v
-     assume b1:"v\<in> (varOfFormList invariantsAbs)"  and b2:"formEval (pre ?r) s" and b4:"v \<in>varOfSent (act ?r')"
+     assume b1:"v\<in> (varOfFormList invariantsAbs)"  and b2:"formEval (pre ?r) s" and b3:"v \<in>varOfSent (act ?r')"
 
-     have "(inv__3 0  )\<in>(set invariantsAbs)" by force
-     with a4 have b30:"formEval (inv__3 0 ) s"   apply(drule_tac x="(inv__3 0  )" in spec,blast)done
-
-     have b3:"formEval (inv__3 i ) s"  proof(cut_tac a1 a2 a3 b30,rule axiomOnf1,force+)qed
+     from a4  have tmp:"formEval (inv__3 0  ) s"   by (force simp del:inv__3_def)
+     have b4:"formEval (inv__3 i  ) s" 
+     proof(cut_tac a1 a2 a3 tmp,rule axiomOnf1,force+)qed
 
      show "expEval (substExpByStatement (IVar v)  (act ?r')) s = expEval (substExpByStatement (IVar v)  (act ?r)) s"  
-       apply (cut_tac  a1 b1 b2 b3,auto) done
+       apply (cut_tac  a1 b1 b2 b4,auto) done
    qed
  next
    show "\<forall>  v. v \<in>  varOfSent (act ?r) \<longrightarrow>  v \<in> varOfFormList ?F \<longrightarrow> v \<in>  varOfSent (act ?r')" by(cut_tac a1, auto)
 
-  (* have "\<forall>f v va. v \<in> varOfForm f \<longrightarrow> f \<in>?F \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act ?r'))\<longrightarrow> va \<in>(varOfFormList invariantsAbs)"   by auto
-  a41:" \<forall>  v. v \<in>  varOfSent (act r1) \<longrightarrow>  v \<in> varOfFormList F \<longrightarrow> v \<in>  varOfSent (act r2)" and
-
-  a5:"\<forall> v va. v \<in> varOfSent (act r2) \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act r2))\<longrightarrow> va \<in> (varOfFormList F *)
- next show "\<forall> v va. v \<in> varOfSent (act ?r') \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act ?r'))\<longrightarrow> va \<in> (varOfFormList ?F)"
+  
+ next 
+   show "\<forall> v va. v \<in> varOfSent (act ?r') \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act ?r'))\<longrightarrow> va \<in> (varOfFormList ?F)"
       by auto  
-  qed
+qed
 
 lemma lemmaOnIdleGtNc:
   assumes a1:"i>NC" and a2:"s \<in> reachableSet (set (allInitSpecs N)) (rules N)" and 
@@ -475,15 +472,15 @@ proof(rule ruleSimCond)
      assume b1:"v\<in> (varOfFormList invariantsAbs)"  and b2:"formEval (pre ?r) s"
 
      have "(inv__3 0  )\<in>(set invariantsAbs)" by force
-     with a4 have b30:"formEval (inv__3 0 ) s"   apply(drule_tac x="(inv__3 0  )" in spec,blast)done
+     with a4 have b30:"formEval (inv__3 0 ) s"   
+       apply(drule_tac x="(inv__3 0  )" in spec,blast)done
 
      have b3:"formEval (inv__3 i ) s"  proof(cut_tac a1 a2 a3 b30,rule axiomOnf1,force+)qed
 
      show "expEval (substExpByStatement (IVar v)  (act ?r')) s = expEval (substExpByStatement (IVar v)  (act ?r)) s"  
        apply (cut_tac  a1 b1 b2 b3,auto) done
    qed
-  (* have "\<forall>f v va. v \<in> varOfForm f \<longrightarrow> f \<in>?F \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act ?r'))\<longrightarrow> va \<in>(varOfFormList invariantsAbs)"   by auto*)
-     then show "\<forall> v va. v \<in> varOfFormList invariantsAbs \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act ?r'))\<longrightarrow> va \<in> varOfFormList invariantsAbs"
+   then show "\<forall> v va. v \<in> varOfFormList invariantsAbs \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act ?r'))\<longrightarrow> va \<in> varOfFormList invariantsAbs"
       by auto  
   qed
 
@@ -808,11 +805,11 @@ and a2: "formEval (andList (allInitSpecs N)) s"
 shows "formEval f s"
   using a1 a2 apply( auto  )done
 
-lemma iniImply_inv__1:
+(*lemma iniImply_inv__1:
 assumes a1: "(\<exists> p__Inv3 p__Inv4. p__Inv3\<le>NC\<and>p__Inv4\<le>NC\<and>p__Inv3~=p__Inv4\<and>f=inv__1  p__Inv3 p__Inv4)"
 and a2: "formEval (andList (allInitSpecs NC)) s"
 shows "formEval f s"
-using a1 a2 apply( auto  )done
+using a1 a2 apply( auto  )done*)
 
 lemma iniImply_inv__2:
 assumes a1: "(\<exists> p__Inv4. p__Inv4\<le>N\<and>f=inv__2  p__Inv4)"
