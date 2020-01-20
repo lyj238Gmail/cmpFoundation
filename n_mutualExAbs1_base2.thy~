@@ -3,9 +3,9 @@
     Copyright    2016 State Key Lab of Computer Science, Institute of Software, Chinese Academy of Sciences
 *)
 
- 
+header{*The n_mutualEx Protocol Case Study*} 
 
-theory n_mutualEx_base2 imports paraTheory
+theory n_mutualEx_base imports paraTheory
 begin
 
 section{*Main definitions*}

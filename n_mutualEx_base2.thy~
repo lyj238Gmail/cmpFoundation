@@ -2,9 +2,7 @@
     Author:     Yongjian Li and Kaiqiang Duan, State Key Lab of Computer Science, Institute of Software, Chinese Academy of Sciences
     Copyright    2016 State Key Lab of Computer Science, Institute of Software, Chinese Academy of Sciences
 *)
-
  
-
 theory n_mutualEx_base2 imports paraTheory
 begin
 
@@ -139,7 +137,7 @@ subsection{*Definitions of initial states*}
 
 lemma lemmaOnn_TryLeNc:
   assumes a1:"i\<le>NC" 
-  shows "trans_sim_on1 (n_Try i) (n_Try i) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r ?F s")
+  shows "trans_sim_on1 (n_Try i) (n_Try i) (set (invariants NC)) s" (is "trans_sim_on1 ?r ?r ?F s")
 proof(rule ruleSimId)
   show  "∀v. v∈varOfForm (pre ?r) ⟶  v ∈(varOfFormList invariantsAbs) "
     by(cut_tac a1, auto) 

@@ -57,7 +57,7 @@ section{*Datatypes to define assignments, statements, rules*}
 
 type_synonym assignType=  "varType \<times>   expType"
 
-datatype statement=  skip| assign assignType          |
+datatype statement=  assign assignType          |
                   parallel assignType  statement
 text{*A statement is is just a lists of assignments, 
 but these assignments are extecuted in parallel, 
@@ -71,12 +71,11 @@ parameter to a statement. *}
 
 primrec cat::"statement \<Rightarrow> statement \<Rightarrow>statement" where
 cat1:"cat (assign a) S=parallel a S" |
-cat2:"cat (parallel a S1) S=parallel a (cat S1 S)"|
-cat3:"cat skip S= S"
+cat2:"cat (parallel a S1) S=parallel a (cat S1 S)"
 text{*For conveniece, we also define the concatation of statements.*}
 
-primrec  parallelList::"statement list \<Rightarrow> statement" where
-"parallelList [] = skip"|
+fun parallelList::"statement list \<Rightarrow> statement" where
+"parallelList [S] = S"|
 "parallelList (S1#SL) = cat S1 (parallelList (SL))" 
 
 fun  forallSent::"nat list\<Rightarrow>paraStatement \<Rightarrow> statement"  where
@@ -154,8 +153,7 @@ an execution of a statement, is  defined as follows:*}
 
 primrec statement2Assigns::"statement \<Rightarrow> assignType list" where
 "statement2Assigns (assign asgn)=[asgn]" |
-"statement2Assigns (parallel a S)=a#statement2Assigns S"|
-"statement2Assigns (skip)=[]" 
+"statement2Assigns (parallel a S)=a#statement2Assigns S"
 
 definition wellformedAssgnList::"assignType list => bool" where
 " wellformedAssgnList asgns\<equiv>distinct (map fst asgns)"
@@ -210,11 +208,7 @@ text{*Let $asgn\!=\![(v_1,e_1),\ldots,(v_n,e_n)]$ be an assignment,
 lemma lemmaOnValOf:
   shows "expEval (valOf (statement2Assigns S) v) s = transAux ( statement2Assigns S) s v" 
   (is "?LHS1 S =?RHS1 S")
-proof(induct_tac S)
-  let ?S="skip"
- show "?LHS1 ?S=?RHS1 ?S"
-    by auto
-next
+  proof(induct_tac S)
   fix x
   let ?S="assign x"
   show "?LHS1 ?S=?RHS1 ?S"
@@ -496,7 +490,6 @@ primrec varOfExp::"expType \<Rightarrow> varType set"  and
 
 primrec  varOfSent::"statement \<Rightarrow> varType set" where
 " varOfSent  (assign a)=( varsOfVar  (fst a)) "|
-" varOfSent  skip={} "|
 " varOfSent  ( parallel a sent2)= (( varsOfVar  (fst a)) \<union>  (varOfSent  sent2))"
 
 primrec varOfFormList::"formula list \<Rightarrow> varType set" where
@@ -617,10 +610,9 @@ subsection{*lemmas on varsOf*}
 lemma varsOnCat[simp]:
   shows "varOfSent (cat S1 S2)=(varOfSent S1 ) \<union> (varOfSent S2 )"
   apply(induct_tac S1)
-    apply simp
-   apply simp
-  apply simp
-  done
+apply (metis (lifting) cat1 varOfSent.simps(1) varOfSent.simps(2))
+by (metis Un_assoc cat2 varOfSent.simps(2))
+  
 
 lemma   forallVars:
   assumes a1:"\<forall> i.( varOfSent (paraForm i))\<inter> varSet ={}"
@@ -1023,10 +1015,6 @@ lemma noEffectSubstAux:
       let ?e="(IVar v)"
       show  "?condOne ?e S\<longrightarrow>?LHS ?e S=?RHS ?e S"
       proof(induct_tac S)
-        let ?S="skip"
-        show "?condOne ?e ?S \<longrightarrow>?LHS ?e ?S=?RHS ?e ?S"
-          by auto
-      next
         fix prod
         let ?S="assign prod"
         show "?condOne ?e ?S \<longrightarrow>?LHS ?e ?S=?RHS ?e ?S"
@@ -1950,28 +1938,6 @@ proof(unfold trans_sim_on1_def,(rule allI)+,(rule impI)+)
  qed
 qed
 
-definition skipRule::" rule" where [simp]:
-" skipRule\<equiv>
-let g = chaos in
-let s = skip in
-guard g s" 
-
-lemma andListMono2Aux: 
-  assumes a1:"formEval a1 s \<longrightarrow> formEval b1 s" and a2:"formEval (andList A) s \<longrightarrow>formEval (andList B) s"
-  shows "formEval (andList (a1#A)) s \<longrightarrow> formEval (andList (b1#B)) s"
-  by (simp add: a2 local.a1)
-  
-lemma andListMono2[intro]: 
-  assumes a1:"formEval a1 s \<longrightarrow> formEval b1 s" and a2:"formEval (andList A) s \<longrightarrow>formEval (andList B) s"
-  and a3:"formEval (andList (a1#A)) s "
-  shows " formEval (andList (b1#B)) s"
-  using a2 a3 local.a1 by auto 
-
-primrec assumption::"formula \<Rightarrow>formula" where
-"assumption (implyForm a b) = b"
-
-primrec conclude::"formula \<Rightarrow>formula" where
-"conclude (implyForm a b) = b"
 (*lemma onF[simp,intro]: 
   " varOfFormList invariantsAbs = 
   { (Field (Para (Ident ''n'') 0) ''data''),varType.Field (Para (Ident ''n'') 0) ''st'' , varType.Field (Para (Ident ''n'') 1) ''st'',

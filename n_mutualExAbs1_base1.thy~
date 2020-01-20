@@ -152,8 +152,6 @@ definition invariants::"nat \<Rightarrow> formula set" where [simp]:
 (\<exists> p__Inv0. p__Inv0\<le>N\<and>f=inv__9  p__Inv0)
 }"
 
-
-
 definition invariantsAbs::" formula list" where [simp]:
 "invariantsAbs  \<equiv> 
 
@@ -242,7 +240,6 @@ axiomatization  where axiomOnf1 [simp,intro]:
   apply(rule_tac x="inv__9 0 " in exI,simp)
   done*)
 
-
 lemma lemmaOnIdleLeNc:
   assumes a1:"i\<le>NC" 
   shows "trans_sim_on1 (n_Idle  i) (n_Idle  i) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r ?F s")
@@ -309,6 +306,12 @@ proof(rule ruleSimCond1)
       by auto  
   qed
 
+
+fun assumption :: "formula \<Rightarrow> formula" where
+"assumption (neg (andForm a b)) = a"
+
+fun conclude:: "formula \<Rightarrow> formula" where
+"conclude  (neg (andForm a b)) = neg b"
 
 
 lemma lemmaOnn_IdleGt:
