@@ -3,7 +3,7 @@
     Copyright    2016 State Key Lab of Computer Science, Institute of Software, Chinese Academy of Sciences
 *)
 
-header{*The n_mutualEx Protocol Case Study*} 
+(*header{*The n_mutualEx Protocol Case Study*} *)
 
 theory n_mutualEx_base imports paraTheory
 begin
@@ -24,7 +24,9 @@ subsection{*  Definitions of Parameterized Rules *}
 
 definition  NC::"nat " where [simp]: "NC==1"
 
- definition n_Try::"nat \<Rightarrow> rule" where [simp]:
+ definition VF::"varType set" where [simp]: 
+"VF \<equiv>{(Para (Ident ''n'') 0),(Para (Ident ''n'') 1),(Ident ''x'')}"
+definition n_Try::"nat \<Rightarrow> rule" where [simp]:
 "n_Try  i\<equiv>
 let g = (eqn (IVar (Para (Ident ''n'') i)) (Const I)) in
 let s = (parallelList [(assign ((Para (Ident ''n'') i), (Const T)))]) in
@@ -54,9 +56,9 @@ let g = (eqn (IVar (Ident ''x'')) (Const true)) in
 let s = (parallelList [(assign ((Ident ''x''), (Const false)))]) in
 guard g s"
 
-definition n_Idle_i_3::"nat \<Rightarrow> rule" where [simp]:
-"n_Idle_i_3 N \<equiv>
-let g = (andForm (andForm (eqn (IVar (Ident ''x'')) (Const false)) (forallForm (down N) (\<lambda>j. (neg (eqn (IVar (Para (Ident ''n'') j)) (Const E)))))) (forallForm (down N) (\<lambda>j. (neg (eqn (IVar (Para (Ident ''n'') j)) (Const C)))))) in
+definition n_Idle_i_3::"rule" where [simp]:
+"n_Idle_i_3  \<equiv>
+let g = (andForm (andForm (eqn (IVar (Ident ''x'')) (Const false)) (forallForm (down NC) (\<lambda>j. (neg (eqn (IVar (Para (Ident ''n'') j)) (Const E)))))) (forallForm (down NC) (\<lambda>j. (neg (eqn (IVar (Para (Ident ''n'') j)) (Const C)))))) in
 let s = (parallelList [(assign ((Ident ''x''), (Const true)))]) in
 guard g s"
 
@@ -68,7 +70,7 @@ definition rules::"nat \<Rightarrow> rule set" where [simp]:
 (\<exists> i. i\<le>N\<and>r=n_Exit  i) \<or>
 (\<exists> i. i\<le>N\<and>r=n_Idle  i) \<or>
 (r=n_Crit_i_3  ) \<or>
-(r=n_Idle_i_3 N )\<or> r=skipRule
+(r=n_Idle_i_3  )\<or> r=skipRule
 }"
 
 
@@ -81,11 +83,11 @@ definition inv_27::"nat \<Rightarrow> formula" where [simp]:
 
 definition inv_7::"nat \<Rightarrow> nat \<Rightarrow> formula" where [simp]:
 "inv_7 i j \<equiv>
-(implyForm (eqn (IVar (Para (Ident ''n'') i)) (Const E)) (neg (eqn (IVar (Para (Ident ''n'') j)) (Const E))))"
+(implyForm (neg (eqn (Const (index i)) (Const (index j)))) (implyForm (eqn (IVar (Para (Ident ''n'') i)) (Const E)) (neg (eqn (IVar (Para (Ident ''n'') j)) (Const E)))))"
 
 definition inv_5::"nat \<Rightarrow> nat \<Rightarrow> formula" where [simp]:
 "inv_5 i j \<equiv>
-(implyForm (eqn (IVar (Para (Ident ''n'') i)) (Const E)) (neg (eqn (IVar (Para (Ident ''n'') j)) (Const C))))"
+(implyForm (neg (eqn (Const (index i)) (Const (index j)))) (implyForm (eqn (IVar (Para (Ident ''n'') i)) (Const E)) (neg (eqn (IVar (Para (Ident ''n'') j)) (Const C)))))"
 
 subsection{*Definitions of  the Set of Invariant Formula Instances in a $N$-protocol Instance*}
 definition invariants::"nat \<Rightarrow> formula set" where [simp]:
@@ -128,49 +130,44 @@ axiomatization  where axiomOnf1 [simp,intro]:
 subsection{*Definitions of initial states*}
 
 lemma lemmaOnn_TryGt_i:
-  assumes a1:"i>NC" and a2:"s ∈ reachableSet (set (allInitSpecs N)) (rules N)"  and  
+  assumes a1:"NC<i" and a2:"s ∈ reachableSet (set (allInitSpecs N)) (rules N)"  and  
   a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" 
-shows "trans_sim_on1 (n_Try i  ) skipRule (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r' ?F s")
-proof(unfold trans_sim_on1_def,(rule allI)+,(rule impI)+,rule disjI2)
+shows "trans_sim_on2 (n_Try  i  ) skipRule VF (set invariantsAbs) s" (is "trans_sim_on2 ?r ?r' VF ?F s")
+proof(unfold trans_sim_on2_def,(rule allI)+,(rule impI)+,rule disjI2)
   fix s2 
-  assume b0:"state_sim_on1 s s2 (set invariantsAbs)"
-  show "state_sim_on1 (trans (act (n_Try i)) s) s2 (set invariantsAbs)"
-  proof(cut_tac a1,unfold state_sim_on1_def,
+  assume b0:"state_sim_on2 s s2 VF "
+  show "state_sim_on2 (trans (act (n_Try  i)) s) s2  VF"
+  proof(cut_tac a1,unfold state_sim_on2_def,
     (rule allI)+,(rule impI)+)
     fix f v
-    assume b1:" f ∈(set invariantsAbs)" and b2:"v ∈ varOfForm f"  
+    assume b1:" v ∈  VF"  
+    
+    have b5:"trans (act (n_Try  i)) s v = s v" 
+      by (cut_tac a1  b1,auto) 
 
-    have b30: "(varOfFormList  invariantsAbs) = {v. ∃f. f ∈ set  invariantsAbs∧ v ∈ varOfForm f}"
-      using setOfList by blast
-      
-     
-    from b1 and b2 and b30 have b4:"v ∈ (varOfFormList  invariantsAbs)" by blast
-     
-    from b4 have b5:"trans (act (n_Try  i)) s v = s v" 
-      by (cut_tac a1  b4  ,auto) 
-
-    from b0   have b6:"s v =s2 v "
-      using b1 b2 state_sim_on1_def by blast  
-    show "trans (act (n_Try i)) s v= s2 v"
+    have b6:"s v =s2 v "
+      using b0 b1 state_sim_on2_def by blast  
+    show "trans (act (n_Try  i)) s v= s2 v"
       using b5 b6 by auto 
   qed
 qed
 lemma lemmaOnn_TryLeNc_:
   assumes a1:"i\<le>NC" 
-  shows "trans_sim_on1 (n_Try i) (n_Try i) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r ?F s")
-proof(rule ruleSimId)
-  show  "∀v. v∈varOfForm (pre ?r) ⟶  v ∈(varOfFormList invariantsAbs) "
+  shows "trans_sim_on2 (n_Try  i) (n_Try  i) VF  (set invariantsAbs) s" (is "trans_sim_on2 ?r ?r VF ?F s")
+proof(rule ruleSimId2)
+  show  "∀v. v∈varOfForm (pre ?r) ⟶  v ∈ VF "
     by(cut_tac a1, auto) 
     
 next
-  show  b1: "∀v a. a ∈ set (statement2Assigns (act ?r)) ⟶ v∈varOfExp ( substExpByStatement (IVar (fst a))  (act ?r))⟶v ∈varOfFormList invariantsAbs "
+  show  b1: "∀v a. a ∈ set (statement2Assigns (act ?r)) ⟶ v∈varOfExp ( substExpByStatement (IVar (fst a))  (act ?r))⟶v ∈VF "
    proof(cut_tac a1,(rule allI)+,(rule impI)+,auto) qed
     
  qed
 lemma lemmaOnn_Try: 
   assumes   a2:"s ∈ reachableSet (set (allInitSpecs N)) (rules N)"  and  
-  a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" and a5:"\<exists> i. i\<le>N\<and>r=n_Try  i"
-  shows "∃ r'. r' ∈ rules NC∧ trans_sim_on1 r r' (set invariantsAbs) s" (is "∃r'.?P1 r' ∧ ?P2 r'")
+  a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" and a5:"\<exists> i. i\<le>N\<and>r=n_Try  i"  and
+  a6:"NC<N"
+  shows "∃ r'. r' ∈ rules NC∧ trans_sim_on2 r r' VF (set invariantsAbs) s" (is "∃r'.?P1 r' ∧ ?P2 r'")
 proof -
   from a5 obtain i where d0:"i\<le>N\<and>r=n_Try  i"  by blast
   have "i>NC|i\<le> NC" by auto
@@ -182,18 +179,18 @@ proof -
            by(cut_tac a1, auto) 
           next
           show  "?P2 (skipRule) "
-           using lemmaOnn_TryGt_i local.a1 a2 a4 d0 by blast 
+           using lemmaOnn_TryGt_i local.a1 a2 a4 a6 d0 by blast 
         qed
        }
 moreover{
        assume a1:"i\<le> NC" 
         have "∃r'. ?P1 r' ∧ ?P2 r'"
-        proof(rule_tac x="(n_Try i)" in exI,rule conjI)
-          show  "?P1 (n_Try i) " 
+        proof(rule_tac x="(n_Try  i)" in exI,rule conjI)
+          show  "?P1 (n_Try  i) " 
            by(cut_tac a1, auto) 
           next
-          show  "?P2 (n_Try i) "
-           using lemmaOnn_TryLeNc_ local.a1 a2 a4 d0 by blast 
+          show  "?P2 (n_Try  i) "
+           using lemmaOnn_TryLeNc_ local.a1 a2 a4 a6 d0 by blast 
         qed
        }
   ultimately show "∃r'.?P1 r' ∧ ?P2 r'" 
@@ -204,8 +201,8 @@ lemma lemmaOnn_CritGt_i:
   assumes a1:"i>NC" and 
   a2:"s ∈ reachableSet (set (allInitSpecs N)) (rules N)"  and a3:"NC<N" and  
   a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" 
-  shows "trans_sim_on1 (n_Crit i)  (n_Crit_i_3  ) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r' (set ?F) s")  (*why (n_Crit_i_3*)
-  proof(rule ruleSimCond1)
+  shows "trans_sim_on2 (n_Crit  i)  (n_Crit_i_3 ) VF (set invariantsAbs) s" (is "trans_sim_on2 ?r ?r' VF (set ?F) s")
+  proof(rule ruleSimCond2)
     show " formEval (pre ?r) s ⟶formEval (pre ?r') s" (is "?A ⟶?B")
     proof(rule impI)+
       assume b0:"?A"
@@ -214,65 +211,65 @@ lemma lemmaOnn_CritGt_i:
        by auto
      qed
    next 
-	show "(∀  v. v ∈  varOfSent (act  ?r') ⟶  v ∈ varOfFormList ?F ⟶ formEval (pre ?r) s ⟶ 
+	show "(∀  v. v ∈  varOfSent (act  ?r') ⟶  v ∈ VF ⟶ formEval (pre ?r) s ⟶ 
     expEval (substExpByStatement (IVar v)  (act ?r')) s = expEval (substExpByStatement (IVar v)  (act ?r)) s)"
    proof(rule allI,(rule impI)+)
       fix  v
-     assume b1:"v∈ (varOfFormList invariantsAbs)"  and b2:"formEval (pre ?r) s" and b3:"v ∈varOfSent (act ?r')"
+     assume b1:"v∈ VF"  and b2:"formEval (pre ?r) s" and b3:"v ∈varOfSent (act ?r')"
   
   show "expEval (substExpByStatement (IVar v)  (act ?r')) s = expEval (substExpByStatement (IVar v)  (act ?r)) s"  
        apply (cut_tac  a1 b1 b2 ,auto) done
    qed
  next
-   show "∀  v. v ∈  varOfSent (act ?r) ⟶  v ∈ varOfFormList ?F ⟶ v ∈  varOfSent (act ?r')" by(cut_tac a1, auto)
+   show "∀  v. v ∈  varOfSent (act ?r) ⟶  v ∈ VF ⟶ v ∈  varOfSent (act ?r')" by(cut_tac a1, auto)
 
   
  next 
-   show "∀ v va. v ∈ varOfSent (act ?r') ⟶va∈varOfExp ( substExpByStatement (IVar v)  (act ?r'))⟶ va ∈ (varOfFormList ?F)"
+   show "∀ v va. v ∈ varOfSent (act ?r') ⟶va∈varOfExp ( substExpByStatement (IVar v)  (act ?r'))⟶ va ∈ VF "
      by auto  
  next
-   show "∀v. v ∈ varOfForm (pre (?r')) ⟶ v ∈ varOfFormList ?F" by auto
+   show "∀v. v ∈ varOfForm (pre (?r')) ⟶ v ∈ VF" by auto
 qed
 lemma lemmaOnn_CritLeNc_:
   assumes a1:"i\<le>NC" 
-  shows "trans_sim_on1 (n_Crit i) (n_Crit i) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r ?F s")
-proof(rule ruleSimId)
-  show  "∀v. v∈varOfForm (pre ?r) ⟶  v ∈(varOfFormList invariantsAbs) "
+  shows "trans_sim_on2 (n_Crit  i) (n_Crit  i) VF  (set invariantsAbs) s" (is "trans_sim_on2 ?r ?r VF ?F s")
+proof(rule ruleSimId2)
+  show  "∀v. v∈varOfForm (pre ?r) ⟶  v ∈ VF "
     by(cut_tac a1, auto) 
     
 next
-  show  b1: "∀v a. a ∈ set (statement2Assigns (act ?r)) ⟶ v∈varOfExp ( substExpByStatement (IVar (fst a))  (act ?r))⟶v ∈varOfFormList invariantsAbs "
+  show  b1: "∀v a. a ∈ set (statement2Assigns (act ?r)) ⟶ v∈varOfExp ( substExpByStatement (IVar (fst a))  (act ?r))⟶v ∈VF "
    proof(cut_tac a1,(rule allI)+,(rule impI)+,auto) qed
     
  qed
 lemma lemmaOnn_Crit: 
   assumes   a2:"s ∈ reachableSet (set (allInitSpecs N)) (rules N)"  and  
-  a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" and a5:"\<exists> i. i\<le>N\<and>r=n_Crit  i"
-  and a6:"NC <N"
-  shows "∃ r'. r' ∈ rules NC∧ trans_sim_on1 r r' (set invariantsAbs) s" (is "∃r'.?P1 r' ∧ ?P2 r'")
+  a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" and a5:"\<exists> i. i\<le>N\<and>r=n_Crit  i"  and
+  a6:"NC<N"
+  shows "∃ r'. r' ∈ rules NC∧ trans_sim_on2 r r' VF (set invariantsAbs) s" (is "∃r'.?P1 r' ∧ ?P2 r'")
 proof -
   from a5 obtain i where d0:"i\<le>N\<and>r=n_Crit  i"  by blast
   have "i>NC|i\<le> NC" by auto
   moreover{
        assume a1:"i>NC" 
         have "∃r'. ?P1 r' ∧ ?P2 r'"
-        proof(rule_tac x="(n_Crit_i_3)" in exI,rule conjI)
-          show  "?P1 (n_Crit_i_3) " 
+        proof(rule_tac x="(n_Crit_i_3 )" in exI,rule conjI)
+          show  "?P1 (n_Crit_i_3 ) " 
            by(cut_tac a1, auto) 
           next
-          show  "?P2 (n_Crit_i_3) "
+          show  "?P2 (n_Crit_i_3 ) "
            using lemmaOnn_CritGt_i local.a1 a2 a4 a6 d0 by blast 
         qed
        }
 moreover{
        assume a1:"i\<le> NC" 
         have "∃r'. ?P1 r' ∧ ?P2 r'"
-        proof(rule_tac x="(n_Crit i)" in exI,rule conjI)
-          show  "?P1 (n_Crit i) " 
+        proof(rule_tac x="(n_Crit  i)" in exI,rule conjI)
+          show  "?P1 (n_Crit  i) " 
            by(cut_tac a1, auto) 
           next
-          show  "?P2 (n_Crit i) "
-           using lemmaOnn_CritLeNc_ local.a1 a2 a4 d0 by blast 
+          show  "?P2 (n_Crit  i) "
+           using lemmaOnn_CritLeNc_ local.a1 a2 a4 a6 d0 by blast 
         qed
        }
   ultimately show "∃r'.?P1 r' ∧ ?P2 r'" 
@@ -280,49 +277,44 @@ moreover{
 qed
 
 lemma lemmaOnn_ExitGt_i:
-  assumes a1:"i>NC" and a2:"s ∈ reachableSet (set (allInitSpecs N)) (rules N)"  and  
+  assumes a1:"NC<i" and a2:"s ∈ reachableSet (set (allInitSpecs N)) (rules N)"  and  
   a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" 
-shows "trans_sim_on1 (n_Exit i  ) skipRule (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r' ?F s")
-proof(unfold trans_sim_on1_def,(rule allI)+,(rule impI)+,rule disjI2)
+shows "trans_sim_on2 (n_Exit  i  ) skipRule VF (set invariantsAbs) s" (is "trans_sim_on2 ?r ?r' VF ?F s")
+proof(unfold trans_sim_on2_def,(rule allI)+,(rule impI)+,rule disjI2)
   fix s2 
-  assume b0:"state_sim_on1 s s2 (set invariantsAbs)"
-  show "state_sim_on1 (trans (act (n_Try i)) s) s2 (set invariantsAbs)"
-  proof(cut_tac a1,unfold state_sim_on1_def,
+  assume b0:"state_sim_on2 s s2 VF "
+  show "state_sim_on2 (trans (act (n_Exit  i)) s) s2  VF"
+  proof(cut_tac a1,unfold state_sim_on2_def,
     (rule allI)+,(rule impI)+)
     fix f v
-    assume b1:" f ∈(set invariantsAbs)" and b2:"v ∈ varOfForm f"  
+    assume b1:" v ∈  VF"  
+    
+    have b5:"trans (act (n_Exit  i)) s v = s v" 
+      by (cut_tac a1  b1,auto) 
 
-    have b30: "(varOfFormList  invariantsAbs) = {v. ∃f. f ∈ set  invariantsAbs∧ v ∈ varOfForm f}"
-      using setOfList by blast
-      
-     
-    from b1 and b2 and b30 have b4:"v ∈ (varOfFormList  invariantsAbs)" by blast
-     
-    from b4 have b5:"trans (act (n_Try  i)) s v = s v" 
-      by (cut_tac a1  b4  ,auto) 
-
-    from b0   have b6:"s v =s2 v "
-      using b1 b2 state_sim_on1_def by blast  
-    show "trans (act (n_Try i)) s v= s2 v"
+    have b6:"s v =s2 v "
+      using b0 b1 state_sim_on2_def by blast  
+    show "trans (act (n_Exit  i)) s v= s2 v"
       using b5 b6 by auto 
   qed
 qed
 lemma lemmaOnn_ExitLeNc_:
   assumes a1:"i\<le>NC" 
-  shows "trans_sim_on1 (n_Exit i) (n_Exit i) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r ?F s")
-proof(rule ruleSimId)
-  show  "∀v. v∈varOfForm (pre ?r) ⟶  v ∈(varOfFormList invariantsAbs) "
+  shows "trans_sim_on2 (n_Exit  i) (n_Exit  i) VF  (set invariantsAbs) s" (is "trans_sim_on2 ?r ?r VF ?F s")
+proof(rule ruleSimId2)
+  show  "∀v. v∈varOfForm (pre ?r) ⟶  v ∈ VF "
     by(cut_tac a1, auto) 
     
 next
-  show  b1: "∀v a. a ∈ set (statement2Assigns (act ?r)) ⟶ v∈varOfExp ( substExpByStatement (IVar (fst a))  (act ?r))⟶v ∈varOfFormList invariantsAbs "
+  show  b1: "∀v a. a ∈ set (statement2Assigns (act ?r)) ⟶ v∈varOfExp ( substExpByStatement (IVar (fst a))  (act ?r))⟶v ∈VF "
    proof(cut_tac a1,(rule allI)+,(rule impI)+,auto) qed
     
  qed
 lemma lemmaOnn_Exit: 
   assumes   a2:"s ∈ reachableSet (set (allInitSpecs N)) (rules N)"  and  
-  a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" and a5:"\<exists> i. i\<le>N\<and>r=n_Exit  i"
-  shows "∃ r'. r' ∈ rules NC∧ trans_sim_on1 r r' (set invariantsAbs) s" (is "∃r'.?P1 r' ∧ ?P2 r'")
+  a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" and a5:"\<exists> i. i\<le>N\<and>r=n_Exit  i"  and
+  a6:"NC<N"
+  shows "∃ r'. r' ∈ rules NC∧ trans_sim_on2 r r' VF (set invariantsAbs) s" (is "∃r'.?P1 r' ∧ ?P2 r'")
 proof -
   from a5 obtain i where d0:"i\<le>N\<and>r=n_Exit  i"  by blast
   have "i>NC|i\<le> NC" by auto
@@ -334,18 +326,18 @@ proof -
            by(cut_tac a1, auto) 
           next
           show  "?P2 (skipRule) "
-           using lemmaOnn_ExitGt_i local.a1 a2 a4 d0 by blast 
+           using lemmaOnn_ExitGt_i local.a1 a2 a4 a6 d0 by blast 
         qed
        }
 moreover{
        assume a1:"i\<le> NC" 
         have "∃r'. ?P1 r' ∧ ?P2 r'"
-        proof(rule_tac x="(n_Exit i)" in exI,rule conjI)
-          show  "?P1 (n_Exit i) " 
+        proof(rule_tac x="(n_Exit  i)" in exI,rule conjI)
+          show  "?P1 (n_Exit  i) " 
            by(cut_tac a1, auto) 
           next
-          show  "?P2 (n_Exit i) "
-           using lemmaOnn_ExitLeNc_ local.a1 a2 a4 d0 by blast 
+          show  "?P2 (n_Exit  i) "
+           using lemmaOnn_ExitLeNc_ local.a1 a2 a4 a6 d0 by blast 
         qed
        }
   ultimately show "∃r'.?P1 r' ∧ ?P2 r'" 
@@ -356,8 +348,8 @@ lemma lemmaOnn_IdleGt_i:
   assumes a1:"i>NC" and 
   a2:"s ∈ reachableSet (set (allInitSpecs N)) (rules N)"  and a3:"NC<N" and  
   a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" 
-  shows "trans_sim_on1 (n_Idle i)  (n_Idle_i_3  NC) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r' (set ?F) s")
-  proof(rule ruleSimCond1)
+  shows "trans_sim_on2 (n_Idle  i)  (n_Idle_i_3 ) VF (set invariantsAbs) s" (is "trans_sim_on2 ?r ?r' VF (set ?F) s")
+  proof(rule ruleSimCond2)
     show " formEval (pre ?r) s ⟶formEval (pre ?r') s" (is "?A ⟶?B")
     proof(rule impI)+
       assume b0:"?A"
@@ -365,90 +357,91 @@ lemma lemmaOnn_IdleGt_i:
             by (force simp del:inv_27_def) 
         have tmp1:"formEval (inv_27 i  ) s" 
         proof(cut_tac a1 a2 a3 tmp,rule axiomOnf1,force+)qed
-        with b0  have c0:"formEval  (conclude (inv_27 i)) s" by auto
+        with b0 a1 have c0:"formEval  (conclude (inv_27 i)) s" by auto
 from a4  have tmp:"formEval (inv_7 0 1)  s"   
             by (force simp del:inv_7_def) 
         have tmp1:"formEval (inv_7 i 0  ) s" 
         proof(cut_tac a1 a2 a3 tmp,rule axiomOnf2,force+)qed
-        with b0  have c1:"formEval  (conclude (inv_7 i 0)) s" by auto
+        with b0 a1 have c1:"formEval  (conclude (inv_7 i 0)) s" by auto
 from a4  have tmp:"formEval (inv_7 0 1)  s"   
             by (force simp del:inv_7_def) 
         have tmp1:"formEval (inv_7 i 1  ) s" 
         proof(cut_tac a1 a2 a3 tmp,rule axiomOnf2,force+)qed
-        with b0  have c2:"formEval  (conclude (inv_7 i 1)) s" by auto
+        with b0 a1 have c2:"formEval  (conclude (inv_7 i 1)) s" by auto
 from a4  have tmp:"formEval (inv_5 0 1)  s"   
             by (force simp del:inv_5_def) 
         have tmp1:"formEval (inv_5 i 0  ) s" 
         proof(cut_tac a1 a2 a3 tmp,rule axiomOnf2,force+)qed
-        with b0  have c3:"formEval  (conclude (inv_5 i 0)) s" by auto
+        with b0 a1 have c3:"formEval  (conclude (inv_5 i 0)) s" by auto
 from a4  have tmp:"formEval (inv_5 0 1)  s"   
             by (force simp del:inv_5_def) 
         have tmp1:"formEval (inv_5 i 1  ) s" 
         proof(cut_tac a1 a2 a3 tmp,rule axiomOnf2,force+)qed
-        with b0  have c4:"formEval  (conclude (inv_5 i 1)) s" by auto
+        with b0 a1 have c4:"formEval  (conclude (inv_5 i 1)) s" by auto
 
       from b0 c0 c1 c2 c3 c4 show "formEval (pre ?r') s" 
        by auto
      qed
    next 
-	show "(∀  v. v ∈  varOfSent (act  ?r') ⟶  v ∈ varOfFormList ?F ⟶ formEval (pre ?r) s ⟶ 
+	show "(∀  v. v ∈  varOfSent (act  ?r') ⟶  v ∈ VF ⟶ formEval (pre ?r) s ⟶ 
     expEval (substExpByStatement (IVar v)  (act ?r')) s = expEval (substExpByStatement (IVar v)  (act ?r)) s)"
    proof(rule allI,(rule impI)+)
       fix  v
-     assume b1:"v∈ (varOfFormList invariantsAbs)"  and b2:"formEval (pre ?r) s" and b3:"v ∈varOfSent (act ?r')"
+     assume b1:"v∈ VF"  and b2:"formEval (pre ?r) s" and b3:"v ∈varOfSent (act ?r')"
   
   show "expEval (substExpByStatement (IVar v)  (act ?r')) s = expEval (substExpByStatement (IVar v)  (act ?r)) s"  
        apply (cut_tac  a1 b1 b2 ,auto) done
    qed
  next
-   show "∀  v. v ∈  varOfSent (act ?r) ⟶  v ∈ varOfFormList ?F ⟶ v ∈  varOfSent (act ?r')" by(cut_tac a1, auto)
+   show "∀  v. v ∈  varOfSent (act ?r) ⟶  v ∈ VF ⟶ v ∈  varOfSent (act ?r')" by(cut_tac a1, auto)
 
   
  next 
-   show "∀ v va. v ∈ varOfSent (act ?r') ⟶va∈varOfExp ( substExpByStatement (IVar v)  (act ?r'))⟶ va ∈ (varOfFormList ?F)"
+   show "∀ v va. v ∈ varOfSent (act ?r') ⟶va∈varOfExp ( substExpByStatement (IVar v)  (act ?r'))⟶ va ∈ VF "
      by auto  
  next
-   show "∀v. v ∈ varOfForm (pre (?r')) ⟶ v ∈ varOfFormList ?F" by auto
+   show "∀v. v ∈ varOfForm (pre (?r')) ⟶ v ∈ VF" by auto
 qed
 lemma lemmaOnn_IdleLeNc_:
   assumes a1:"i\<le>NC" 
-  shows "trans_sim_on1 (n_Idle i) (n_Idle i) (set invariantsAbs) s" (is "trans_sim_on1 ?r ?r ?F s")
-proof(rule ruleSimId)
-  show  "∀v. v∈varOfForm (pre ?r) ⟶  v ∈(varOfFormList invariantsAbs) "
+  shows "trans_sim_on2 (n_Idle  i) (n_Idle  i) VF  (set invariantsAbs) s" (is "trans_sim_on2 ?r ?r VF ?F s")
+proof(rule ruleSimId2)
+  show  "∀v. v∈varOfForm (pre ?r) ⟶  v ∈ VF "
     by(cut_tac a1, auto) 
     
 next
-  show  b1: "∀v a. a ∈ set (statement2Assigns (act ?r)) ⟶ v∈varOfExp ( substExpByStatement (IVar (fst a))  (act ?r))⟶v ∈varOfFormList invariantsAbs "
+  show  b1: "∀v a. a ∈ set (statement2Assigns (act ?r)) ⟶ v∈varOfExp ( substExpByStatement (IVar (fst a))  (act ?r))⟶v ∈VF "
    proof(cut_tac a1,(rule allI)+,(rule impI)+,auto) qed
     
  qed
 lemma lemmaOnn_Idle: 
   assumes   a2:"s ∈ reachableSet (set (allInitSpecs N)) (rules N)"  and  
-  a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" and a5:"\<exists> i. i\<le>N\<and>r=n_Idle  i"
-  shows "∃ r'. r' ∈ rules NC∧ trans_sim_on1 r r' (set invariantsAbs) s" (is "∃r'.?P1 r' ∧ ?P2 r'")
+  a4:"∀f.  f ∈(set invariantsAbs) ⟶  formEval f s" and a5:"\<exists> i. i\<le>N\<and>r=n_Idle  i"  and
+  a6:"NC<N"
+  shows "∃ r'. r' ∈ rules NC∧ trans_sim_on2 r r' VF (set invariantsAbs) s" (is "∃r'.?P1 r' ∧ ?P2 r'")
 proof -
   from a5 obtain i where d0:"i\<le>N\<and>r=n_Idle  i"  by blast
   have "i>NC|i\<le> NC" by auto
   moreover{
        assume a1:"i>NC" 
         have "∃r'. ?P1 r' ∧ ?P2 r'"
-        proof(rule_tac x="(n_Idle  NC)" in exI,rule conjI)
-          show  "?P1 (n_Idle  NC) " 
+        proof(rule_tac x="(n_Idle_i_3 )" in exI,rule conjI)
+          show  "?P1 (n_Idle_i_3 ) " 
            by(cut_tac a1, auto) 
           next
-          show  "?P2 (n_Idle  NC) "
-           using lemmaOnn_IdleGt_i local.a1 a2 a4 d0 by blast 
+          show  "?P2 (n_Idle_i_3 ) "
+           using lemmaOnn_IdleGt_i local.a1 a2 a4 a6 d0 by blast 
         qed
        }
 moreover{
        assume a1:"i\<le> NC" 
         have "∃r'. ?P1 r' ∧ ?P2 r'"
-        proof(rule_tac x="(n_Idle i)" in exI,rule conjI)
-          show  "?P1 (n_Idle i) " 
+        proof(rule_tac x="(n_Idle  i)" in exI,rule conjI)
+          show  "?P1 (n_Idle  i) " 
            by(cut_tac a1, auto) 
           next
-          show  "?P2 (n_Idle i) "
-           using lemmaOnn_IdleLeNc_ local.a1 a2 a4 d0 by blast 
+          show  "?P2 (n_Idle  i) "
+           using lemmaOnn_IdleLeNc_ local.a1 a2 a4 a6 d0 by blast 
         qed
        }
   ultimately show "∃r'.?P1 r' ∧ ?P2 r'" 
