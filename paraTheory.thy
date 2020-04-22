@@ -1263,8 +1263,13 @@ definition
   " state_sim_on2 s s' V ==(\<forall> v.  v \<in>V\<longrightarrow>s(v) = s'(v))" 
 
 
+
 primrec scalar2Nat ::"scalrValueType \<Rightarrow>nat"  where
 "scalar2Nat (index n) = n"
+
+type_synonym stateSimType="state \<Rightarrow> state \<Rightarrow>varType set \<Rightarrow>varType set\<Rightarrow>nat\<Rightarrow>bool"
+
+type_synonym predSimType="formula set \<Rightarrow>formula set\<Rightarrow>varType set \<Rightarrow>varType set\<Rightarrow>nat\<Rightarrow>bool"
 
 definition
   state_sim_on3 ::"state\<Rightarrow>state\<Rightarrow>varType  set\<Rightarrow>varType  set\<Rightarrow>nat=>bool" where [simp]:
@@ -1274,16 +1279,25 @@ definition
   pred_sim_on1 :: "formula\<Rightarrow>formula\<Rightarrow>formula set\<Rightarrow>state\<Rightarrow>bool" where [simp]:
   "pred_sim_on1 f1 f2 F s\<equiv>
    formEval f1 s \<longrightarrow> (\<exists>s'. formEval f2 s' \<and>  state_sim_on1 s s' F)"
+
+definition                                                           
+  pred_sim_on3 :: " stateSimType \<Rightarrow>formula\<Rightarrow>formula\<Rightarrow>varType  set\<Rightarrow>varType  set\<Rightarrow>nat\<Rightarrow>bool" where [simp]:
+  "pred_sim_on3 h f1 f2 V V' M \<equiv>
+   \<forall>s1 s2. (h s1 s2 V V' M \<longrightarrow> formEval f1 s1 \<longrightarrow>  formEval f2 s2)"
+
+(*definition 
+  exp_sim_on3:"expSimType"  where [simp]:
+  "exp_sim_on3 s s' V V M \<equiv> *)
                                                                        
 definition 
   pred_sim_on2 :: "formula\<Rightarrow>formula\<Rightarrow>varType set\<Rightarrow>state\<Rightarrow>bool" where [simp]:
   "pred_sim_on2 f1 f2 V s\<equiv>
    formEval f1 s \<longrightarrow> (\<exists>s'. formEval f2 s' \<and>  state_sim_on2 s s' V)"
 
-definition 
+(*definition 
   pred_sim_on3 :: "formula\<Rightarrow>formula\<Rightarrow>varType set \<Rightarrow>varType set \<Rightarrow> nat\<Rightarrow>state\<Rightarrow>bool" where [simp]:
   "pred_sim_on3 f1 f2 V V' N  s\<equiv>
-   formEval f1 s \<longrightarrow> (\<exists>s'. formEval f2 s' \<and>  state_sim_on3 s s' V V' N )"
+   formEval f1 s \<longrightarrow> (\<exists>s'. formEval f2 s' \<and>  state_sim_on3 s s' V V' N )"*)
 
 definition
   trans_sim_on1 :: "rule \<Rightarrow> rule \<Rightarrow>formula set\<Rightarrow>state\<Rightarrow>bool" where [simp]:
@@ -1306,6 +1320,22 @@ definition
            ((state_sim_on3 (trans (act r1) s1) (trans (act r2) s2) V V' N\<and> (formEval (pre r2) s2 ))
            \<or> state_sim_on3 (trans (act r1) s1) s2 V V' N))" 
 
+definition cmpRel ::"rule \<Rightarrow>rule \<Rightarrow>varType set\<Rightarrow>varType set\<Rightarrow>nat\<Rightarrow>formula list\<Rightarrow>bool" where
+"cmpRel  r r2 V V' M  F \<equiv> (\<forall>s1 s2 . ( state_sim_on3 s1 s2 V V' M)\<longrightarrow> formEval (andForm (andList F) (pre r)) s1\<longrightarrow>formEval (pre r2) s2) \<and>
+  (\<forall>s1 s2 v. ( state_sim_on3 s1 s2 V V' M)\<longrightarrow> v \<in>  varOfSent (act r) \<longrightarrow> v\<in>V \<longrightarrow>formEval (andForm (andList F) (pre r)) s1\<longrightarrow>
+  (expEval (substExpByStatement (IVar v)  (act r2)) s1 =
+   expEval (substExpByStatement (IVar v)  (act r)) s2))\<and>
+ (\<forall>s1 s2 v. ( state_sim_on3 s1 s2 V V' M)\<longrightarrow> v \<in>  varOfSent (act r2) \<longrightarrow> v\<in>V' \<longrightarrow>formEval (andForm (andList F) (pre r)) s1\<longrightarrow>
+  scalar2Nat (expEval (substExpByStatement (IVar v)  (act r)) s1) <M \<longrightarrow>
+   (expEval (substExpByStatement (IVar v)  (act r)) s1) =
+    (expEval (substExpByStatement (IVar v)  (act r2)) s2))\<and>
+ (\<forall>s1 s2 v. ( state_sim_on3 s1 s2 V V' M)\<longrightarrow> v \<in>  varOfSent (act r) \<longrightarrow> v\<in>V' \<longrightarrow>formEval (andForm (andList F) (pre r)) s1\<longrightarrow>
+  scalar2Nat (expEval (substExpByStatement (IVar v)  (act r)) s1) \<ge>M \<longrightarrow>
+    scalar2Nat (expEval (substExpByStatement (IVar v)  (act r2)) s2) =M) "
+
+
+(*
+  (\<exists>F2. pre r'=andList F2 \<and> (\<forall>f2. (f2 \<in> set F2) \<longrightarrow>(\<exists>f. f \<in>F  \<and> (\<forall>s. formEval (implyForm (andForm (pre r) f) f2) s)))*)
 definition
   prot_sim_on1 ::"formula set \<Rightarrow> formula set \<Rightarrow> rule set \<Rightarrow> rule set \<Rightarrow> formula set\<Rightarrow>state\<Rightarrow>bool" where [simp]:
 "prot_sim_on1 I I' rs rs' F s\<equiv>
@@ -1678,6 +1708,125 @@ next
   qed
 qed
 
+
+lemma sim3:
+  
+  assumes  a1:"pred_sim_on3 state_sim_on3 I I' V V' M" 
+  and a2:"\<forall>r. r\<in>rs \<longrightarrow>(\<exists>r'. r'\<in>rs'\<and> cmpRel r r' V V' M   F)"
+  and a3:"\<forall>s f. s \<in>reachableSet {I'} rs' \<longrightarrow>f \<in>set F \<longrightarrow> formEval f s" 
+  and a4:"\<forall>f. f\<in>set F \<longrightarrow> (varOfForm f) \<subseteq> V  "
+  and a5:"\<forall> s f.   formEval I s \<longrightarrow> (\<forall>f'. f' \<in>set F \<longrightarrow> formEval  f' s)   "
+  and a6:"s \<in>reachableSet {I} rs"
+shows "((\<exists>s'. s' \<in>reachableSet {I'} rs' \<and> state_sim_on3 s s'  V V' M  )\<and> (\<forall> f. f \<in>set F \<longrightarrow> formEval f s ))" (is "?con1 s \<and> ?con2 s")
+ using a6
+proof induct
+  fix ini s
+  assume b1:"formEval ini s" and b2:"ini \<in>{I}"
+  show "?con1 s \<and> ?con2 s"
+  proof(rule conjI)
+    
+    have c0:"s \<in> reachableSet {I} rs"
+      using b1 b2 reachableSet.initState by auto
+    have c1:" (\<forall>f. f \<in> I \<longrightarrow> (\<exists>f'. f' \<in> I' \<and> pred_sim_on1 f f' F s))"
+      by (meson a5 b1 b2 c0 local.a1 prot_sim_on1_def)
+      have c2:"\<exists>f'. f' \<in> I' \<and> pred_sim_on1 ini f' F s"  (is "\<exists>f'. ?P f'")
+        by(cut_tac c1 b2  ,auto)
+    then obtain ini' where c3:"?P ini'" by blast
+    then have "\<exists>s'. formEval ini' s' \<and> state_sim_on1 s s' F"  (is "\<exists>s'. ?P s'")
+        by(cut_tac b1 c3 a5 a6, auto)
+    then obtain s' where c4:"?P s'" by blast
+    show "?con1 s"
+    proof(rule_tac x="s'" in exI,rule conjI)
+      show "s' \<in>reachableSet I' rs'"
+      proof(rule_tac ?ini="ini'" in initState)
+        show "formEval ini' s'" by(cut_tac c4,simp)
+        next
+          show "ini' \<in> I'" by(cut_tac c3,simp)
+      qed
+    next
+     show "state_sim_on1 s s' F" by(cut_tac c4,auto)
+   qed
+   next show "?con2 s"
+      by(cut_tac a5 b2 b1,auto)
+  qed
+next
+  fix s r
+  let ?s'="trans (act r) s"
+  assume b1:"?con1 s \<and> ?con2 s" and b2:"s \<in> reachableSet I rs" 
+  and b3:"r \<in> rs"  and b4:"formEval (pre r)  s"  
+  show "?con1 ?s' \<and> ?con2 ?s'"
+  proof -
+    have c1:" (\<exists> r'. r' \<in> rs' \<and> trans_sim_on1 r r' F s)" (is "EX r'. ?P r'")
+      using b1 b2 b3 local.a1 prot_sim_on1_def by blast 
+    then obtain r' where c2:"?P r'"  by blast
+
+    have c3:"(\<exists>s2 . (s2 \<in> reachableSet I' rs' \<and> state_sim_on1 s s2 F  ))" (is "EX s2. ?P s2")
+      apply(cut_tac b1 c2 b4, auto ) done
+    then obtain s2 where c3:"?P s2"  by blast
+
+    
+    have c4:"
+            ( state_sim_on1 (trans (act r) s) (trans (act r') s2) F \<and>
+            (formEval (pre r') s2 )) | state_sim_on1 (trans (act r) s) s2  F" (is " ?P s2")
+      apply(cut_tac  b1 b4  c3 c2 , auto)  done
+    moreover
+    {assume c5:"( state_sim_on1 (trans (act r) s) (trans (act r') s2) F \<and>
+            (formEval (pre r') s2 ))"
+      have c6: "?con1 ?s'"
+      proof(rule_tac x="trans (act r') s2" in exI,rule conjI)
+        show " trans (act r') s2\<in>reachableSet I' rs'"
+        proof(rule_tac ?s="s2" in oneStep)
+          show "s2\<in>reachableSet I' rs'" apply(cut_tac b1 c3,simp) done
+        next
+          show "r' \<in> rs'" by(cut_tac c2,simp)
+        next
+          show "(formEval (pre r') s2 )" by(cut_tac c5,auto)
+        qed
+      next
+        show "state_sim_on1 (trans (act r) s) (trans (act r') s2) F"
+          by(cut_tac c5, auto)
+      qed
+      then obtain s' where  c7: "s' \<in>reachableSet I' rs' \<and> state_sim_on1 ?s' s' F " by blast
+      
+     have c8:"?con2 ?s'"
+     proof(rule allI,rule impI)
+      fix f
+      assume d1:"f \<in> F"
+      have c9:"formEval f s'" by(cut_tac a2 c7 d1,auto)
+      show "formEval f ?s'"
+        using c7 c9 d1 stSim by blast
+    qed
+    have "?con1 ?s' \<and> ?con2 ?s'" by(cut_tac c6 c8, auto)
+    }
+    moreover
+    {assume c5:"state_sim_on1 (trans (act r) s) s2  F"
+      have c6:"?con1 ?s'"
+      proof(rule_tac x=" s2" in exI,rule conjI)
+        show " s2\<in>reachableSet I' rs'"
+          by (simp add: c3) 
+        next
+          show "state_sim_on1 (trans (act r) s)  s2 F" by(cut_tac c5,auto)
+        qed
+      
+      
+    
+      have c8:"?con2 ?s'"
+      proof(rule allI,rule impI)
+        fix f
+        assume d1:"f \<in> F"
+        have c9:"formEval f s2" by(cut_tac a2 c3 d1,auto)
+        show "formEval f ?s'"
+          using c5 c9 d1 stSim by blast 
+      qed
+      have "?con1 ?s' \<and> ?con2 ?s'" by(cut_tac c6 c8, auto)  
+    }
+    ultimately show c6:"?con1 ?s'\<and> ?con2 ?s'" by blast
+
+   
+  qed
+qed
+
+
 (*lemma ruleSim:
   assumes a1:"\<forall>s1 s2 f. (\<forall> f. f \<in>F \<longrightarrow> formEval f s1 ) \<longrightarrow> 
     state_sim_on1 s1 s2 F\<longrightarrow> formEval  (pre r1)  s1 \<longrightarrow> formEval (pre r2) s2" and
@@ -1835,6 +1984,15 @@ proof(unfold trans_sim_on1_def,(rule allI)+,(rule impI)+)
        using agreeOnVars c4 by blast 
      show " trans (act r1) s v =   trans (act r2) s2 v"
        using a4 b1 c1 c2 c5 lemmaOnValOf by auto
+definition cmpRel ::"rule \<Rightarrow>rule \<Rightarrow>varType set\<Rightarrow>varType set\<Rightarrow>nat\<Rightarrow>stateSimType\<Rightarrow>formula set\<Rightarrow>bool" where
+"cmpRel r r' V V' M h F \<equiv>
+  (\<exists>F2. pre r2=andList F2 \<and> (\<forall>f2. (f2 \<in> set F2) \<longrightarrow>(\<exists>f. f \<in>F  \<and> (h (andForm (pre r1) f) f2 V V' M))) \<and>
+  (\<forall>s1 s2 v. (h s1 s2 V V' M)\<longrightarrow> v \<in>  varOfSent (act r2) \<longrightarrow> v\<in>V \<longrightarrow>
+  (expEval (substExpByStatement (IVar v)  (act r2)) s1 =
+   expEval (substExpByStatement (IVar v)  (act r1)) s2))\<and>
+ (\<forall>s1 s2 v. (h s1 s2 V V' M)\<longrightarrow> v \<in>  varOfSent (act r2) \<longrightarrow> v\<in>V' \<longrightarrow>
+  (expEval (substExpByStatement (IVar v)  (act r2)) s1 =
+   expEval (substExpByStatement (IVar v)  (act r1)) s2))\<and>)"
    qed
  next
    have "formEval (pre r2) s"
@@ -1886,7 +2044,16 @@ proof(unfold trans_sim_on1_def,(rule allI)+,(rule impI)+ )
      have c5:"expEval (substExpByStatement (IVar v)  (act r)) s1 = expEval (substExpByStatement (IVar v)  (act r)) s2"
      proof(case_tac "\<exists>a. a \<in> set (statement2Assigns (act r)) \<and> (fst a) =v")
        assume d1:"\<exists>a. a \<in> set (statement2Assigns (act r)) \<and> (fst a) =v"
-       from d1 obtain as where d2:"as \<in> set (statement2Assigns (act r)) \<and> (fst as) =v" by blast
+       from d1 obtain as where d2:"as \<in> set (statement2Assigns (act r)) \<and> (fst as) =v" by bla
+definition cmpRel ::"rule \<Rightarrow>rule \<Rightarrow>varType set\<Rightarrow>varType set\<Rightarrow>nat\<Rightarrow>stateSimType\<Rightarrow>formula set\<Rightarrow>bool" where
+"cmpRel r r' V V' M h F \<equiv>
+  (\<exists>F2. pre r2=andList F2 \<and> (\<forall>f2. (f2 \<in> set F2) \<longrightarrow>(\<exists>f. f \<in>F  \<and> (h (andForm (pre r1) f) f2 V V' M))) \<and>
+  (\<forall>s1 s2 v. (h s1 s2 V V' M)\<longrightarrow> v \<in>  varOfSent (act r2) \<longrightarrow> v\<in>V \<longrightarrow>
+  (expEval (substExpByStatement (IVar v)  (act r2)) s1 =
+   expEval (substExpByStatement (IVar v)  (act r1)) s2))\<and>
+ (\<forall>s1 s2 v. (h s1 s2 V V' M)\<longrightarrow> v \<in>  varOfSent (act r2) \<longrightarrow> v\<in>V' \<longrightarrow>
+  (expEval (substExpByStatement (IVar v)  (act r2)) s1 =
+   expEval (substExpByStatement (IVar v)  (act r1)) s2))\<and>)"st
          have d3:"\<forall>v.  v\<in>varOfExp ( substExpByStatement (IVar (fst as))  (act r)) \<longrightarrow> s1(v) = s2 v"
            using c4 d2 by blast
          then show "expEval (substExpByStatement (IVar v)  (act r)) s1 = expEval (substExpByStatement (IVar v)  (act r)) s2"
@@ -2373,7 +2540,35 @@ primrec assumption::"formula \<Rightarrow>formula" where
 
 primrec conclude::"formula \<Rightarrow>formula" where
 "conclude (implyForm a b) = b"
-(*lemma onF[simp,intro]: 
+
+lemma sim:
+  
+  assumes  a1:"\<forall>s. s \<in>reachableSet I rs \<longrightarrow> (\<forall> f. f \<in>F \<longrightarrow> formEval f s )\<longrightarrow>prot_sim_on1 I I' rs rs' F s"
+    and a2:"\<forall>s f. s \<in>reachableSet I' rs' \<longrightarrow>f \<in>F \<longrightarrow> formEval f s  " 
+  and a4:"s \<in>reachableSet I rs " and a5:"\<forall> s f.  f \<in>I \<longrightarrow> formEval f s \<longrightarrow> (\<forall>f'. f' \<in>F \<longrightarrow> formEval  f' s)   "
+  and a6:"\<forall> s f.  f \<in>I' \<longrightarrow> formEval f s \<longrightarrow> (\<forall>f'. f' \<in>F \<longrightarrow> formEval  f' s)   "
+shows "((\<exists>s'. s' \<in>reachableSet I' rs' \<and> state_sim_on1 s s' F  )\<and> (\<forall> f. f \<in>F \<longrightarrow> formEval f s ))" (is "?con1 s \<and> ?con2 s")
+  using 
+(*
+a1:" formEval (pre r1) s \<longrightarrow>formEval (pre r2) s" and 
+
+  a3:"\<forall>v. v\<in>varOfForm (pre r2) \<longrightarrow>  formEval (pre r1) s\<longrightarrow>(v \<in>V \<or> (v \<in> V' \<and> ((scalar2Nat (s(v)) )\<le> N)))"  and 
+
+  a4:" (\<forall>  v. v \<in>  varOfSent (act r2) \<longrightarrow>  formEval (pre r1) s \<longrightarrow> 
+    expEval (substExpByStatement (IVar v)  (act r2)) s = expEval (substExpByStatement (IVar v)  (act r1)) s)" and
+
+  a41:" \<forall>  v. v \<in>  varOfSent (act r1)  \<longrightarrow> v \<in>V \<longrightarrow>v \<in>  varOfSent (act r2)" and  
+
+  a42:" \<forall>  v. v \<in>  varOfSent (act r1) \<longrightarrow>v \<in>V'\<longrightarrow>  formEval (pre r1) s \<longrightarrow> 
+    scalar2Nat ( expEval  ( substExpByStatement (IVar v)  (act r1)) s) \<le> N\<longrightarrow>
+    v \<in>  varOfSent (act r2)" and
+
+  a5:"\<forall> v va. v \<in> varOfSent (act r2) \<longrightarrow>va\<in>varOfExp ( substExpByStatement (IVar v)  (act r2))\<longrightarrow> 
+      (va \<in> V | va \<in> V' \<and> scalar2Nat (s(va)) \<le> N)" 
+ 
+
+
+lemma onF[simp,intro]:
   " varOfFormList invariantsAbs = 
   { (Field (Para (Ident ''n'') 0) ''data''),varType.Field (Para (Ident ''n'') 0) ''st'' , varType.Field (Para (Ident ''n'') 1) ''st'',
    (Ident ''x''),(Ident ''memDATA''),(Ident ''auxDATA'')  }"    
@@ -2394,5 +2589,6 @@ have c4:"formEval  (substFormByStatement f (act r1)) s1 = (formEval (substFormBy
         apply(cut_tac  a2, drule_tac x="s1" in spec, drule_tac x="f" in spec,simp,cut_tac b1 c1,simp) done
       have c5:"(\<forall> f. f \<in>F \<longrightarrow> formEval f s2 )" 
         apply(cut_tac b1 b2,auto) done
+
 *)
 end
